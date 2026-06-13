@@ -19,7 +19,8 @@ test:
 clean:
     rm -rf KeepPressing/bin KeepPressing/obj \
            KeepPressing.Core/bin KeepPressing.Core/obj \
-           KeepPressing.Core.Tests/bin KeepPressing.Core.Tests/obj
+           KeepPressing.Core.Tests/bin KeepPressing.Core.Tests/obj \
+           KeepPressing.App.Tests/bin KeepPressing.App.Tests/obj
 
 # ポータブル発行(既定 x64)。MUI/pdb 剪定は csproj の publish 後ターゲットが自動実行
 publish arch="x64":

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KeepPressing.Core;
 using KeepPressing.Interop;
+using KeepPressing.Presentation;
 using VirtualKey = Windows.System.VirtualKey;
 
 namespace KeepPressing.ViewModels;
@@ -170,49 +170,27 @@ public sealed partial class MainPageViewModel : ObservableObject
         _engine.Start(spec);
     }
 
-    /// <summary>UI 状態 → ドメイン型（ADT）への翻訳の単一点。</summary>
+    /// <summary>UI 状態 → ドメイン型（ADT）への翻訳。純粋関数 <see cref="SpecBuilder"/> へ委譲する。</summary>
     private bool TryBuildSpec(out PressSpec spec, out string? error)
     {
-        // NumberBox は空欄のとき NaN を返すため、ドメイン型へ翻訳する前にここで弾く。
-        if (IsRepeatMode && double.IsNaN(IntervalMs))
-        {
-            (spec, error) = (null!, "連打間隔を入力してください。");
-            return false;
-        }
-
-        InputTarget target;
-        if (IsMouseTarget)
-        {
-            if (UseFixedPosition && (double.IsNaN(FixedX) || double.IsNaN(FixedY)))
-            {
-                (spec, error) = (null!, "固定座標の X / Y を入力してください。");
-                return false;
-            }
-
-            var position = UseFixedPosition ? new ScreenPoint((int)FixedX, (int)FixedY) : (ScreenPoint?)null;
-            target = new InputTarget.Mouse(SelectedMouseButton.Value, position);
-        }
-        else if (_capturedKey is { } key)
-        {
-            target = new InputTarget.Key(key);
-        }
-        else
-        {
-            (spec, error) = (null!, "連打するキーを設定してください。");
-            return false;
-        }
-
-        PressMode mode = IsRepeatMode
-            ? new PressMode.Repeat(TimeSpan.FromMilliseconds(Math.Max(IntervalMs, 1)))
-            : PressMode.Hold.Instance;
-        (spec, error) = (new PressSpec(target, mode), null);
-        return true;
+        var config = new PressConfiguration(
+            SelectedTarget,
+            SelectedMouseButton.Value,
+            UseFixedPosition,
+            FixedX,
+            FixedY,
+            _capturedKey,
+            SelectedMode.Value,
+            IntervalMs);
+        return SpecBuilder.TryBuild(config, out spec, out error);
     }
 
     private void OnEngineState(EngineState state)
     {
         IsRunning = state is EngineState.Running;
-        StatusText = IsRunning ? $"{Describe(state)}（Esc連打で緊急停止）" : Describe(state);
+        StatusText = IsRunning
+            ? $"{SpecDescriber.Describe(state, KeyDisplay)}（Esc連打で緊急停止）"
+            : SpecDescriber.Describe(state, KeyDisplay);
 
         // 緊急脱出: 実行中だけ Esc を全体登録する。連打中は対象ウィンドウにフォーカスが奪われ
         // 設定したホットキーも忘れがちなので、誰でも知っている Esc を停止専用キーにする。
@@ -225,36 +203,6 @@ public sealed partial class MainPageViewModel : ObservableObject
         {
             _ = _hotkeys.UnregisterAsync(HotkeyId.EmergencyStop);
         }
-    }
-
-    private string Describe(EngineState state) => state switch
-    {
-        EngineState.Idle => "停止中",
-        EngineState.Running(var spec) => $"実行中: {Describe(spec)}",
-        _ => throw new UnreachableException(),
-    };
-
-    private string Describe(PressSpec spec)
-    {
-        var target = spec.Target switch
-        {
-            InputTarget.Mouse(var button, var position) =>
-                button switch
-                {
-                    MouseButton.Left => "左クリック",
-                    MouseButton.Right => "右クリック",
-                    _ => "中クリック",
-                }
-                + (position is { } p ? $"（固定 {p.X}, {p.Y}）" : "（カーソル位置）"),
-            InputTarget.Key => $"キー {KeyDisplay}",
-            _ => throw new UnreachableException(),
-        };
-        return spec.Mode switch
-        {
-            PressMode.Repeat repeat => $"{target} を {repeat.Interval.TotalMilliseconds:0}ms 間隔で連打",
-            PressMode.Hold => $"{target} を長押し",
-            _ => throw new UnreachableException(),
-        };
     }
 
     // ---- グローバルホットキー --------------------------------------------
