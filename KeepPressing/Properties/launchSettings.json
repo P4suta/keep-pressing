@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KeepPressing (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "KeepPressing (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

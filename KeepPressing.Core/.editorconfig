@@ -1,0 +1,6 @@
+# Core は呼び出しコンテキスト（UI スレッドの SynchronizationContext）に依存してはならない。
+# ConfigureAwait(false) を機械的に強制し、「ループはスレッドプール上で走る」を事実として保証する。
+# これはアプリ終了時の長押し Up 保証（UnhandledException ハンドラの同期待機）が
+# デッドロックしないことの前提条件である。
+[*.cs]
+dotnet_diagnostic.CA2007.severity = error

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="KeepPressing.Core.Tests/KeepPressing.Core.Tests.csproj" />
+  <Project Path="KeepPressing.Core/KeepPressing.Core.csproj" />
+  <Project Path="KeepPressing/KeepPressing.csproj" />
+</Solution>

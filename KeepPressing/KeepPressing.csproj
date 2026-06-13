@@ -1,0 +1,126 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>KeepPressing</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- ポータブル配布（製品要件）: MSIX 登録なし・WinAppSDK/.NET ランタイム同梱。フォルダ削除で完全撤去 -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <!-- ポータブル配布の肥大対策: 同梱ローカライズリソースを日本語・英語のみに絞る。
+         WinAppSDK の native MUI を取りこぼす分は下部 TrimPortableDistribution ターゲットで剪定する。 -->
+    <SatelliteResourceLanguages>en;ja</SatelliteResourceLanguages>
+    <!-- CsWin32 生成コード（INPUT union 等）が unsafe を要求する -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <!--
+    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
+    Tools extension to be activated for this project even if the Windows App SDK Nuget
+    package has not yet been restored.
+  -->
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.SDK.BuildTools.WinApp adds first-class support for
+    `dotnet run` on packaged WinUI apps: it hooks the .NET CLI Run target to
+    register a debug identity via the winapp CLI and launch the app with
+    package identity (AUMID).
+    Set <EnableWinAppRunSupport>false</EnableWinAppRunSupport> in a
+    <PropertyGroup> above to opt out.
+  -->
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.275">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\KeepPressing.Core\KeepPressing.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CsWin32 はプロジェクト直下しか自動検出しないため、Interop 配下の列挙ファイルを明示登録する -->
+    <AdditionalFiles Include="Interop\NativeMethods.txt" />
+  </ItemGroup>
+
+  <!--
+    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
+    Explorer "Package and Publish" context menu entry to be enabled for this project even if
+    the Windows App SDK Nuget package has not yet been restored.
+  -->
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+  </PropertyGroup>
+
+  <!--
+    ポータブル配布スリム化: publish 後に en/ja 以外の WinAppSDK ローカライズ MUI フォルダと pdb を除去する。
+    SatelliteResourceLanguages は .NET サテライト（resources.dll）のみ絞るため、WinUI の native MUI は
+    ここで宣言的に剪定する。AfterTargets="Publish" のため通常ビルドでは走らず、CLI/VS どちらの発行でも自動実行。
+    .mui ファイルの %(RecursiveDir)（= "af-ZA\" 等の言語フォルダ名）が en/ja で始まらないものを削除。空集合でも no-op で冪等。
+  -->
+  <Target Name="TrimPortableDistribution" AfterTargets="Publish">
+    <ItemGroup>
+      <_KpMuiFile Include="$(PublishDir)**\*.mui" />
+      <_KpLangDirToRemove Include="$(PublishDir)%(_KpMuiFile.RecursiveDir)" Condition="'%(_KpMuiFile.RecursiveDir)' != '' and&#xD;&#xA;                   !$([System.String]::Copy('%(_KpMuiFile.RecursiveDir)').StartsWith('en')) and&#xD;&#xA;                   !$([System.String]::Copy('%(_KpMuiFile.RecursiveDir)').StartsWith('ja'))" />
+      <_KpPdb Include="$(PublishDir)**\*.pdb" />
+      <!--
+        連打ツールが使わない WinAppSDK の機能 DLL(AI 推論 / Windows AI API / Widgets / WebView2)。
+        いずれも対応 WinRT 型を起動するまでロードされない on-demand 同梱物なので、未使用なら配布から除外できる(約44M)。
+        WinUIEdit / PerceptiveStreaming / CLR 診断系は描画・テキスト編集・例外処理で使われ得るため温存。
+      -->
+      <_KpUnusedNativeDll Include="$(PublishDir)onnxruntime.dll" />
+      <_KpUnusedNativeDll Include="$(PublishDir)DirectML.dll" />
+      <_KpUnusedNativeDll Include="$(PublishDir)Microsoft.Windows.AI.*.dll" />
+      <_KpUnusedNativeDll Include="$(PublishDir)Microsoft.Graphics.Imaging.dll" />
+      <_KpUnusedNativeDll Include="$(PublishDir)Microsoft.Windows.Widgets.dll" />
+      <_KpUnusedNativeDll Include="$(PublishDir)Microsoft.Web.WebView2.Core.dll" />
+      <_KpUnusedNativeDll Include="$(PublishDir)WebView2Loader.dll" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_KpLangDirToRemove-&gt;Distinct())" />
+    <Delete Files="@(_KpPdb)" />
+    <Delete Files="@(_KpUnusedNativeDll)" />
+    <Message Importance="high" Text="Trimmed portable distribution under $(PublishDir): kept en*/ja* MUI only, removed pdb and unused SDK native DLLs (AI/Widgets/WebView2)" />
+  </Target>
+</Project>
