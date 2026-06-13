@@ -1,6 +1,8 @@
 using System;
+using KeepPressing.Composition;
 using KeepPressing.Core;
 using KeepPressing.Interop;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 
 namespace KeepPressing;
@@ -36,6 +38,9 @@ public partial class App : Application
     public static nint WindowHandle =>
         WinRT.Interop.WindowNative.GetWindowHandle(Window);
 
+    /// <summary>DI コンテナ（合成ルート）。Step 3 で静的 <see cref="Services"/> を置き換える。</summary>
+    private IServiceProvider _serviceProvider = null!;
+
     private bool _shutdownComplete;
 
     /// <summary>
@@ -56,10 +61,20 @@ public partial class App : Application
         // MainWindow のコンストラクタが Frame.Navigate(MainPage) を実行し、
         // MainPage が App.Services / App.DispatcherQueue を参照するため。
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+        // DI 骨格（並走）: DispatcherQueue は UI スレッドで取得した値をインスタンス登録する
+        // （ファクトリ遅延解決は別スレッドのキューを掴む危険があるため）。
+        _serviceProvider = new ServiceCollection()
+            .AddSingleton(DispatcherQueue)
+            .AddKeepPressing()
+            .BuildServiceProvider();
+
+        // 既存の静的 AppServices は ServiceProvider 解決の同一インスタンスを指す（インスタンスは 1 つ）。
+        // Step 3 で AppServices record ごと廃止し、利用側を ServiceProvider 注入へ切り替える。
         Services = new AppServices(
-            new PressEngine(new Win32InputSynthesizer(), TimeProvider.System),
-            new HotkeyListener(),
-            new CursorLocator());
+            _serviceProvider.GetRequiredService<PressEngine>(),
+            _serviceProvider.GetRequiredService<HotkeyListener>(),
+            _serviceProvider.GetRequiredService<ICursorLocator>());
 
         // 最終安全網: 未処理例外でも長押しの Up を送出してから落ちる。
         // Core は ConfigureAwait(false) を徹底している（CA2007=error）ため、
