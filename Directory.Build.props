@@ -1,0 +1,20 @@
+<Project>
+  <!--
+    全プロジェクト共通の言語・品質規約の単一ソース。
+    プロジェクト固有値（TargetFramework, PlatformTarget, OutputType 等）は各 .csproj に残す。
+    Core 固有の ConfigureAwait 強制（CA2007=error）は KeepPressing.Core/.editorconfig が担い、
+    UI 層へは波及させない（UI スレッド復帰の素の await を壊さないため）。
+  -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      .NET アナライザとコードスタイルをビルドで機械的に強制する（従来は Core にも UI にも明示設定がなかった）。
+      TreatWarningsAsErrors は WinUI/CsWin32 生成コード由来の警告を潰し切った最終段階で有効化する。
+    -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-Recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+</Project>

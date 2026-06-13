@@ -1,0 +1,26 @@
+# リポジトリのルート editorconfig。
+# 各プロジェクトの .editorconfig（例: KeepPressing.Core）はこれを継承し、
+# プロジェクト固有の規約（Core の CA2007=error 等）を重ねる。
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{csproj,props,targets,slnx}]
+indent_size = 2
+
+[*.{cs,xaml}]
+indent_size = 4
+
+[*.cs]
+# 既存コードの慣習を規約として明文化する。
+csharp_style_namespace_declarations = file_scoped:suggestion
+dotnet_sort_system_directives_first = true
+
+# 生成コードはスタイル/解析の対象外（WinUI XAML の *.g.cs・CsWin32・AssemblyInfo）。
+[{**/obj/**/*,**/*.g.cs,**/*.g.i.cs,**/*.Designer.cs}]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
