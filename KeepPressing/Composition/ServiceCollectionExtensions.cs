@@ -1,5 +1,6 @@
 using KeepPressing.Core;
 using KeepPressing.Interop;
+using KeepPressing.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace KeepPressing.Composition;
@@ -18,6 +19,8 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<PressEngine>();
         services.AddSingleton<HotkeyListener>();
         services.AddSingleton<ICursorLocator, CursorLocator>();
+        services.AddSingleton<IImeGuard, ImeGuard>();
+        services.AddTransient<MainPageViewModel>();
         return services;
     }
 }

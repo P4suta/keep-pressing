@@ -1,6 +1,7 @@
 using System;
 using KeepPressing.Interop;
 using KeepPressing.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,14 +14,20 @@ namespace KeepPressing;
 /// </summary>
 public sealed partial class MainPage : Page
 {
+    private readonly IImeGuard _imeGuard;
+
     public MainPageViewModel ViewModel { get; }
 
     public MainPage()
     {
-        ViewModel = new MainPageViewModel(App.Services, App.DispatcherQueue);
+        // WinUI の Page は引数なし ctor で生成されるため、合成ルート（App.Current.Services）から
+        // 自身の ViewModel と View 専用サービスを解決する（Composition Root への単一アクセス点）。
+        var services = ((App)Application.Current).Services;
+        ViewModel = services.GetRequiredService<MainPageViewModel>();
+        _imeGuard = services.GetRequiredService<IImeGuard>();
         InitializeComponent();
 
-        // 対象タブ（SelectorBar）の初期選択を ViewModel に合わせる（永続化された設定を反映）。
+        // 対象タブ（SelectorBar）の初期選択を ViewModel に合わせる。
         var targetIndex = Math.Clamp(ViewModel.TargetKindIndex, 0, TargetSelector.Items.Count - 1);
         TargetSelector.SelectedItem = TargetSelector.Items[targetIndex];
 
@@ -33,11 +40,11 @@ public sealed partial class MainPage : Page
                 case nameof(MainPageViewModel.IsKeyCaptureArmed):
                     if (ViewModel.IsKeyCaptureArmed)
                     {
-                        ImeGuard.Suspend(App.WindowHandle);
+                        _imeGuard.Suspend();
                     }
                     else
                     {
-                        ImeGuard.Restore(App.WindowHandle);
+                        _imeGuard.Restore();
                     }
 
                     break;

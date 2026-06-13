@@ -35,9 +35,9 @@ public sealed partial class MainPageViewModel : ObservableObject
     private int _lastHotkeyIndex;
     private bool _revertingHotkey;
 
-    public MainPageViewModel(AppServices services, DispatcherQueue dispatcher)
+    public MainPageViewModel(PressEngine engine, HotkeyListener hotkeys, ICursorLocator cursor, DispatcherQueue dispatcher)
     {
-        (_engine, _hotkeys, _cursor) = (services.Engine, services.Hotkeys, services.Cursor);
+        (_engine, _hotkeys, _cursor) = (engine, hotkeys, cursor);
         _dispatcher = dispatcher;
 
         KeyDisplay = "未設定";
