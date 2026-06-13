@@ -38,7 +38,7 @@ public enum HotkeyModifiers : uint
 /// 専用バックグラウンドスレッド 1 本だけで完結する（ウィンドウも WNDPROC も不要）。
 /// MOD_NOREPEAT を全登録に無条件付与し、押しっぱなしによるオートリピート発火を OS レベルで防ぐ。
 /// </summary>
-public sealed class HotkeyListener : IDisposable
+public sealed class HotkeyListener : IHotkeyListener, IDisposable
 {
     private const uint RequestMessage = PInvoke.WM_APP + 1;
 

@@ -7,7 +7,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KeepPressing.Core;
 using KeepPressing.Interop;
-using Microsoft.UI.Dispatching;
 using VirtualKey = Windows.System.VirtualKey;
 
 namespace KeepPressing.ViewModels;
@@ -15,21 +14,21 @@ namespace KeepPressing.ViewModels;
 /// <summary>
 /// メイン画面の ViewModel。
 /// マーシャリング規律: Interop/Core から飛んでくるイベント（ホットキー、StateChanged、Faulted）は
-/// すべてここで <see cref="DispatcherQueue.TryEnqueue(DispatcherQueueHandler)"/> により UI スレッドへ搬送する。
+/// すべてここで <see cref="IUiDispatcher.Post(System.Action)"/> により UI スレッドへ搬送する。
 /// エンジンの Start/StopAsync は UI スレッドからのみ呼ぶ（PressEngine のスレッド契約）。
 /// </summary>
 public sealed partial class MainPageViewModel : ObservableObject
 {
     private readonly PressEngine _engine;
-    private readonly HotkeyListener _hotkeys;
+    private readonly IHotkeyListener _hotkeys;
     private readonly ICursorLocator _cursor;
-    private readonly DispatcherQueue _dispatcher;
+    private readonly IUiDispatcher _dispatcher;
 
     private KeyCode? _capturedKey;
     private TaskCompletionSource<ScreenPoint>? _captureResult;
     private HotkeyChoice _lastHotkey;
 
-    public MainPageViewModel(PressEngine engine, HotkeyListener hotkeys, ICursorLocator cursor, DispatcherQueue dispatcher)
+    public MainPageViewModel(PressEngine engine, IHotkeyListener hotkeys, ICursorLocator cursor, IUiDispatcher dispatcher)
     {
         (_engine, _hotkeys, _cursor) = (engine, hotkeys, cursor);
         _dispatcher = dispatcher;
@@ -45,9 +44,9 @@ public sealed partial class MainPageViewModel : ObservableObject
         // 登録経路を下の明示呼び出し 1 本に統一する（値ベースの再入制御。フラグを持たない）。
         SelectedHotkey = _lastHotkey = HotkeyChoices[1];   // F6
 
-        _hotkeys.Pressed += id => _dispatcher.TryEnqueue(() => OnHotkey(id));
-        _engine.StateChanged += s => _dispatcher.TryEnqueue(() => OnEngineState(s));
-        _engine.Faulted += ex => _dispatcher.TryEnqueue(async () =>
+        _hotkeys.Pressed += id => _dispatcher.Post(() => OnHotkey(id));
+        _engine.StateChanged += s => _dispatcher.Post(() => OnEngineState(s));
+        _engine.Faulted += ex => _dispatcher.Post(async () =>
         {
             await _engine.StopAsync();
             ErrorMessage = $"入力の送出中にエラーが発生したため停止しました: {ex.Message}";

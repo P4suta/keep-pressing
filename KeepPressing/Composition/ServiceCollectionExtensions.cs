@@ -17,9 +17,10 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IInputSynthesizer, Win32InputSynthesizer>();
         services.AddSingleton<PressEngine>();
-        services.AddSingleton<HotkeyListener>();
+        services.AddSingleton<IHotkeyListener, HotkeyListener>();
         services.AddSingleton<ICursorLocator, CursorLocator>();
         services.AddSingleton<IImeGuard, ImeGuard>();
+        services.AddSingleton<IUiDispatcher, DispatcherQueueUiDispatcher>();
         services.AddTransient<MainPageViewModel>();
         return services;
     }
