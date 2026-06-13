@@ -1,4 +1,4 @@
-using System;
+using System.Linq;
 using KeepPressing.Interop;
 using KeepPressing.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,9 +27,10 @@ public sealed partial class MainPage : Page
         _imeGuard = services.GetRequiredService<IImeGuard>();
         InitializeComponent();
 
-        // 対象タブ（SelectorBar）の初期選択を ViewModel に合わせる。
-        var targetIndex = Math.Clamp(ViewModel.TargetKindIndex, 0, TargetSelector.Items.Count - 1);
-        TargetSelector.SelectedItem = TargetSelector.Items[targetIndex];
+        // 対象タブ（SelectorBar）の初期選択を ViewModel.SelectedTarget に合わせる（Tag の enum で対応付け）。
+        TargetSelector.SelectedItem = TargetSelector.Items
+            .OfType<SelectorBarItem>()
+            .First(item => item.Tag is TargetKind kind && kind == ViewModel.SelectedTarget);
 
         ViewModel.PropertyChanged += (_, e) =>
         {
@@ -83,13 +84,13 @@ public sealed partial class MainPage : Page
 
     private void OnErrorBarCloseClicked(InfoBar sender, object args) => ViewModel.ClearError();
 
-    // SelectorBar はインデックスを直接バインドできないため、選択を ViewModel.TargetKindIndex へ橋渡しする（view の関心事）。
+    // SelectorBar は任意の値を直接バインドできないため、各項目の Tag に持たせた TargetKind を
+    // ViewModel.SelectedTarget へ橋渡しする（view の関心事。インデックスの暗黙契約を排除）。
     private void OnTargetSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        var index = sender.Items.IndexOf(sender.SelectedItem);
-        if (index >= 0)
+        if (sender.SelectedItem is SelectorBarItem { Tag: TargetKind kind })
         {
-            ViewModel.TargetKindIndex = index;
+            ViewModel.SelectedTarget = kind;
         }
     }
 }

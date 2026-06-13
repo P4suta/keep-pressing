@@ -7,6 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:KeepPressing"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:KeepPressing.ViewModels"
     mc:Ignorable="d"
     PreviewKeyDown="OnPagePreviewKeyDown">
 
@@ -49,14 +50,10 @@
                         AutomationProperties.AutomationId="HotkeySelector"
                         AutomationProperties.Name="開始停止ホットキー"
                         MinWidth="90"
+                        DisplayMemberPath="DisplayKey"
                         IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
-                        SelectedIndex="{x:Bind ViewModel.HotkeyIndex, Mode=TwoWay}">
-                        <x:String>F5</x:String>
-                        <x:String>F6</x:String>
-                        <x:String>F7</x:String>
-                        <x:String>F9</x:String>
-                        <x:String>F10</x:String>
-                    </ComboBox>
+                        ItemsSource="{x:Bind ViewModel.HotkeyChoices}"
+                        SelectedItem="{x:Bind ViewModel.SelectedHotkey, Mode=TwoWay}" />
                 </StackPanel>
 
                 <TextBlock
@@ -97,12 +94,12 @@
                             AutomationProperties.Name="連打の対象"
                             HorizontalAlignment="Center"
                             SelectionChanged="OnTargetSelectionChanged">
-                            <SelectorBarItem AutomationProperties.Name="マウス" Text="マウス">
+                            <SelectorBarItem AutomationProperties.Name="マウス" Tag="{x:Bind vm:TargetKind.Mouse}" Text="マウス">
                                 <SelectorBarItem.Icon>
                                     <FontIcon Glyph="&#xE962;" />
                                 </SelectorBarItem.Icon>
                             </SelectorBarItem>
-                            <SelectorBarItem AutomationProperties.Name="キーボード" Text="キーボード">
+                            <SelectorBarItem AutomationProperties.Name="キーボード" Tag="{x:Bind vm:TargetKind.Keyboard}" Text="キーボード">
                                 <SelectorBarItem.Icon>
                                     <FontIcon Glyph="&#xE765;" />
                                 </SelectorBarItem.Icon>
@@ -124,11 +121,9 @@
                                             AutomationProperties.AutomationId="MouseButtonSelector"
                                             AutomationProperties.Name="マウスボタン"
                                             MinWidth="160"
-                                            SelectedIndex="{x:Bind ViewModel.MouseButtonIndex, Mode=TwoWay}">
-                                            <x:String>左クリック</x:String>
-                                            <x:String>右クリック</x:String>
-                                            <x:String>中クリック</x:String>
-                                        </ComboBox>
+                                            DisplayMemberPath="DisplayName"
+                                            ItemsSource="{x:Bind ViewModel.MouseButtons}"
+                                            SelectedItem="{x:Bind ViewModel.SelectedMouseButton, Mode=TwoWay}" />
                                     </controls:SettingsCard>
 
                                     <controls:SettingsCard Header="クリック位置">
@@ -228,10 +223,9 @@
                                 AutomationProperties.AutomationId="ModeSelector"
                                 AutomationProperties.Name="動作モード"
                                 MinWidth="160"
-                                SelectedIndex="{x:Bind ViewModel.ModeIndex, Mode=TwoWay}">
-                                <x:String>連打</x:String>
-                                <x:String>長押し</x:String>
-                            </ComboBox>
+                                DisplayMemberPath="DisplayName"
+                                ItemsSource="{x:Bind ViewModel.Modes}"
+                                SelectedItem="{x:Bind ViewModel.SelectedMode, Mode=TwoWay}" />
                         </controls:SettingsCard>
 
                         <controls:SettingsCard Header="間隔 (ms)" Visibility="{x:Bind ViewModel.IsRepeatMode, Mode=OneWay}">

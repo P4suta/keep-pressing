@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using KeepPressing.Core;
 using KeepPressing.Interop;
 using Microsoft.UI.Dispatching;
+using VirtualKey = Windows.System.VirtualKey;
 
 namespace KeepPressing.ViewModels;
 
@@ -18,13 +20,6 @@ namespace KeepPressing.ViewModels;
 /// </summary>
 public sealed partial class MainPageViewModel : ObservableObject
 {
-    private const ushort VkF8 = 0x77;
-    private const ushort VkEscape = 0x1B;
-
-    // ComboBox の並びと一致させる。F8 は座標キャプチャ確定用に予約するため除外。
-    private static readonly string[] HotkeyNames = ["F5", "F6", "F7", "F9", "F10"];
-    private static readonly ushort[] HotkeyVks = [0x74, 0x75, 0x76, 0x78, 0x79];
-
     private readonly PressEngine _engine;
     private readonly HotkeyListener _hotkeys;
     private readonly ICursorLocator _cursor;
@@ -32,23 +27,23 @@ public sealed partial class MainPageViewModel : ObservableObject
 
     private KeyCode? _capturedKey;
     private TaskCompletionSource<ScreenPoint>? _captureResult;
-    private int _lastHotkeyIndex;
-    private bool _revertingHotkey;
+    private HotkeyChoice _lastHotkey;
 
     public MainPageViewModel(PressEngine engine, HotkeyListener hotkeys, ICursorLocator cursor, DispatcherQueue dispatcher)
     {
         (_engine, _hotkeys, _cursor) = (engine, hotkeys, cursor);
         _dispatcher = dispatcher;
 
+        SelectedMouseButton = MouseButtons[0];
+        SelectedMode = Modes[0];
         KeyDisplay = "未設定";
         IntervalMs = 50;
         LivePositionText = "";
         StatusText = "停止中";
 
-        // 初期値の代入で OnHotkeyIndexChanged → 登録 が走らないよう抑止し、登録経路を 1 本にする。
-        _revertingHotkey = true;
-        HotkeyIndex = _lastHotkeyIndex = 1;   // F6
-        _revertingHotkey = false;
+        // 初期選択を _lastHotkey と一致させることで、setter が走らせる OnSelectedHotkeyChanged を no-op にし、
+        // 登録経路を下の明示呼び出し 1 本に統一する（値ベースの再入制御。フラグを持たない）。
+        SelectedHotkey = _lastHotkey = HotkeyChoices[1];   // F6
 
         _hotkeys.Pressed += id => _dispatcher.TryEnqueue(() => OnHotkey(id));
         _engine.StateChanged += s => _dispatcher.TryEnqueue(() => OnEngineState(s));
@@ -58,18 +53,42 @@ public sealed partial class MainPageViewModel : ObservableObject
             ErrorMessage = $"入力の送出中にエラーが発生したため停止しました: {ex.Message}";
         });
 
-        _ = ChangeHotkeyAsync(HotkeyIndex);   // 初期ホットキー登録（変更時と同一経路）
+        _ = ChangeHotkeyAsync(SelectedHotkey);   // 初期ホットキー登録（変更時と同一経路）
     }
+
+    // ---- 選択肢（単一の真実の源。XAML は ItemsSource でバインドし、項目の並びを XAML に重複させない）----
+
+    public IReadOnlyList<Choice<MouseButton>> MouseButtons { get; } =
+    [
+        new(MouseButton.Left, "左クリック"),
+        new(MouseButton.Right, "右クリック"),
+        new(MouseButton.Middle, "中クリック"),
+    ];
+
+    public IReadOnlyList<Choice<PressModeKind>> Modes { get; } =
+    [
+        new(PressModeKind.Repeat, "連打"),
+        new(PressModeKind.Hold, "長押し"),
+    ];
+
+    public IReadOnlyList<HotkeyChoice> HotkeyChoices { get; } =
+    [
+        new(VirtualKey.F5, "F5"),
+        new(VirtualKey.F6, "F6"),
+        new(VirtualKey.F7, "F7"),
+        new(VirtualKey.F9, "F9"),
+        new(VirtualKey.F10, "F10"),
+    ];
 
     // ---- 設定状態 -------------------------------------------------------
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsMouseTarget), nameof(IsKeyboardTarget))]
     [NotifyCanExecuteChangedFor(nameof(ToggleCommand))]
-    public partial int TargetKindIndex { get; set; }          // 0: マウス / 1: キーボード
+    public partial TargetKind SelectedTarget { get; set; }
 
     [ObservableProperty]
-    public partial int MouseButtonIndex { get; set; }         // 0: 左 / 1: 右 / 2: 中
+    public partial Choice<MouseButton> SelectedMouseButton { get; set; }
 
     [ObservableProperty]
     public partial bool UseFixedPosition { get; set; }
@@ -92,11 +111,11 @@ public sealed partial class MainPageViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRepeatMode))]
-    public partial int ModeIndex { get; set; }                // 0: 連打 / 1: 長押し
+    public partial Choice<PressModeKind> SelectedMode { get; set; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HotkeyName), nameof(ToggleButtonLabel))]
-    public partial int HotkeyIndex { get; set; }
+    [NotifyPropertyChangedFor(nameof(ToggleButtonLabel))]
+    public partial HotkeyChoice SelectedHotkey { get; set; }
 
     // ---- 実行状態 -------------------------------------------------------
 
@@ -121,13 +140,12 @@ public sealed partial class MainPageViewModel : ObservableObject
 
     // ---- 導出プロパティ -------------------------------------------------
 
-    public bool IsMouseTarget => TargetKindIndex == 0;
-    public bool IsKeyboardTarget => TargetKindIndex == 1;
-    public bool IsRepeatMode => ModeIndex == 0;
+    public bool IsMouseTarget => SelectedTarget is TargetKind.Mouse;
+    public bool IsKeyboardTarget => SelectedTarget is TargetKind.Keyboard;
+    public bool IsRepeatMode => SelectedMode.Value is PressModeKind.Repeat;
     public bool IsNotRunning => !IsRunning;
     public bool HasError => ErrorMessage is not null;
-    public string HotkeyName => HotkeyNames[Math.Clamp(HotkeyIndex, 0, HotkeyNames.Length - 1)];
-    public string ToggleButtonLabel => IsRunning ? $"■ 停止 ({HotkeyName})" : $"▶ 開始 ({HotkeyName})";
+    public string ToggleButtonLabel => IsRunning ? $"■ 停止 ({SelectedHotkey.DisplayKey})" : $"▶ 開始 ({SelectedHotkey.DisplayKey})";
     public string CpsText => $"≈ 毎秒 {1000 / Math.Max(IntervalMs, 1):0} 回";
 
     // ---- 開始 / 停止 ----------------------------------------------------
@@ -172,14 +190,8 @@ public sealed partial class MainPageViewModel : ObservableObject
                 return false;
             }
 
-            var button = MouseButtonIndex switch
-            {
-                0 => MouseButton.Left,
-                1 => MouseButton.Right,
-                _ => MouseButton.Middle,
-            };
             var position = UseFixedPosition ? new ScreenPoint((int)FixedX, (int)FixedY) : (ScreenPoint?)null;
-            target = new InputTarget.Mouse(button, position);
+            target = new InputTarget.Mouse(SelectedMouseButton.Value, position);
         }
         else if (_capturedKey is { } key)
         {
@@ -208,7 +220,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         // （Esc は座標キャプチャでも使うが、実行中はキャプチャ不可なので競合しない）
         if (IsRunning)
         {
-            _ = _hotkeys.RegisterAsync(HotkeyId.EmergencyStop, HotkeyModifiers.None, VkEscape);
+            _ = _hotkeys.RegisterAsync(HotkeyId.EmergencyStop, HotkeyModifiers.None, (ushort)VirtualKey.Escape);
         }
         else
         {
@@ -274,30 +286,29 @@ public sealed partial class MainPageViewModel : ObservableObject
         }
     }
 
-    partial void OnHotkeyIndexChanged(int value)
+    partial void OnSelectedHotkeyChanged(HotkeyChoice value)
     {
-        if (!_revertingHotkey)
+        // 巻き戻し代入（value == _lastHotkey）は登録を起こさない。再入を値で判定するためフラグが不要になる。
+        if (value != _lastHotkey)
         {
             _ = ChangeHotkeyAsync(value);
         }
     }
 
-    private async Task ChangeHotkeyAsync(int newIndex)
+    private async Task ChangeHotkeyAsync(HotkeyChoice choice)
     {
         await _hotkeys.UnregisterAsync(HotkeyId.Toggle);
-        if (await _hotkeys.RegisterAsync(HotkeyId.Toggle, HotkeyModifiers.None, HotkeyVks[newIndex]))
+        if (await _hotkeys.RegisterAsync(HotkeyId.Toggle, HotkeyModifiers.None, (ushort)choice.Vk))
         {
-            _lastHotkeyIndex = newIndex;
+            _lastHotkey = choice;
             ErrorMessage = null;
             return;
         }
 
         // 競合: 直前のキーへ巻き戻して再登録する。
-        ErrorMessage = $"{HotkeyNames[newIndex]} は他のアプリが使用中のため割り当てられませんでした。";
-        _revertingHotkey = true;
-        HotkeyIndex = _lastHotkeyIndex;
-        _revertingHotkey = false;
-        await _hotkeys.RegisterAsync(HotkeyId.Toggle, HotkeyModifiers.None, HotkeyVks[_lastHotkeyIndex]);
+        ErrorMessage = $"{choice.DisplayKey} は他のアプリが使用中のため割り当てられませんでした。";
+        SelectedHotkey = _lastHotkey;
+        await _hotkeys.RegisterAsync(HotkeyId.Toggle, HotkeyModifiers.None, (ushort)_lastHotkey.Vk);
     }
 
     // ---- 座標キャプチャ ---------------------------------------------------
@@ -305,13 +316,13 @@ public sealed partial class MainPageViewModel : ObservableObject
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task CapturePositionAsync(CancellationToken ct)
     {
-        if (!await _hotkeys.RegisterAsync(HotkeyId.CaptureConfirm, HotkeyModifiers.None, VkF8))
+        if (!await _hotkeys.RegisterAsync(HotkeyId.CaptureConfirm, HotkeyModifiers.None, (ushort)VirtualKey.F8))
         {
             ErrorMessage = "F8 を登録できませんでした（他のアプリが使用中）。";
             return;
         }
 
-        if (!await _hotkeys.RegisterAsync(HotkeyId.CaptureCancel, HotkeyModifiers.None, VkEscape))
+        if (!await _hotkeys.RegisterAsync(HotkeyId.CaptureCancel, HotkeyModifiers.None, (ushort)VirtualKey.Escape))
         {
             await _hotkeys.UnregisterAsync(HotkeyId.CaptureConfirm);
             ErrorMessage = "Esc を登録できませんでした（他のアプリが使用中）。";
