@@ -16,5 +16,11 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!--
+      0 警告を潰し切った最終段として、Debug ビルドでは警告をエラー化し品質規律をビルドで固定する。
+      Release/publish は WinAppSDK 由来の IL2104 トリム警告（抑制困難）が出るため対象外にする。
+    -->
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Debug'">true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>
