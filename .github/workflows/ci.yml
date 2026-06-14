@@ -23,7 +23,7 @@ jobs:
 
       # mise.toml に固定した .NET SDK / just をそのまま CI でも使い、ローカルと同一のツールチェーンにする。
       - name: Setup toolchain (mise)
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v4
 
       # Debug ビルド。Directory.Build.props で Debug は TreatWarningsAsErrors=true のため、
       # アナライザ/コードスタイル警告がそのまま CI の品質ゲートになる。
