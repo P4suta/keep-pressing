@@ -1,0 +1,62 @@
+name: CodeQL
+
+# C# は WinUI/.NET10(net*-windows TFM)のため Ubuntu/buildless では restore できず
+# 空解析になる。windows + mise(.NET 10) で実ビルドをトレースして正しく解析する。
+# 負荷を避けるため main への push と週次のみ実行（PR は CI の build-test に任せる）。
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '24 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            build-mode: manual
+            runner: windows-latest
+          - language: actions
+            build-mode: none
+            runner: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # C# は実ビルドして解析するため、CI と同一の mise(.NET 10 / just)を用意する。
+      - name: Setup toolchain (mise)
+        if: matrix.language == 'csharp'
+        uses: jdx/mise-action@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # build-mode: manual の C#。CI と同じ just build（mise の .NET 10）でコンパイルを
+      # トレースさせ、完全な C# データベースを構築する（default setup の空解析を解消）。
+      - name: Build for CodeQL (C#)
+        if: matrix.build-mode == 'manual'
+        run: just build
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
