@@ -1,0 +1,40 @@
+name: Release
+
+# v* タグの push で、ポータブル配布物(self-contained x64)を zip 化し GitHub Release に添付する。
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup toolchain (mise)
+        uses: jdx/mise-action@v2
+
+      # csproj の TrimPortableDistribution が発行後に MUI/pdb/未使用 DLL を剪定する → dist/KeepPressing。
+      - name: Publish portable (x64, self-contained)
+        run: just publish
+
+      - name: Package zip
+        id: pack
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v',''
+          $zip = "keep-pressing-$version-win-x64.zip"
+          Compress-Archive -Path dist/KeepPressing -DestinationPath $zip
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "packaged $zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.pack.outputs.zip }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true

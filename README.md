@@ -1,5 +1,8 @@
 # KeepPressing
 
+[![CI](https://github.com/P4suta/keep-pressing/actions/workflows/ci.yml/badge.svg)](https://github.com/P4suta/keep-pressing/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Windows 用の連打ツール。マウスクリック・キーボードの**連打**と**長押し**を、グローバルホットキーで開始/停止できます。
 
 ## 特徴
@@ -58,3 +61,7 @@ KeepPressing(App, WinUI 3) ──▶ KeepPressing.Core ◀── KeepPressing.Co
 5. **合成入力を無視するアプリがあります** — Raw Input を直接読むゲームやアンチチート保護されたアプリは、合成入力を無視・検出することがあります
 6. **座標キャプチャ中は F8/Esc を専有します**（キャプチャ中のみ。UI にも表示されます）
 7. **「現在のカーソル位置」モードで開始ボタンから開始すると自アプリの上を連打します** — ホットキーでの開始を推奨（UI にもヒントを表示）
+
+## ライセンス
+
+[Apache License 2.0](LICENSE) で公開しています。

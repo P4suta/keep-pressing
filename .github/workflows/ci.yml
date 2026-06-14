@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build-test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # mise.toml に固定した .NET SDK / just をそのまま CI でも使い、ローカルと同一のツールチェーンにする。
+      - name: Setup toolchain (mise)
+        uses: jdx/mise-action@v2
+
+      # Debug ビルド。Directory.Build.props で Debug は TreatWarningsAsErrors=true のため、
+      # アナライザ/コードスタイル警告がそのまま CI の品質ゲートになる。
+      - name: Build (Debug, warnings as errors)
+        run: just build
+
+      - name: Test
+        run: just test

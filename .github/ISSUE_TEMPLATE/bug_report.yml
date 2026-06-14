@@ -1,0 +1,30 @@
+name: バグ報告
+description: 不具合の報告
+labels: [bug]
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 症状
+      description: 何が起きたか / 期待した動作
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 再現手順
+      placeholder: |
+        1. ...
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: バージョン / OS
+      placeholder: "v1.0.0 / Windows 11 23H2 x64"
+    validations:
+      required: true
+  - type: textarea
+    id: crash
+    attributes:
+      label: クラッシュ情報（任意）
+      description: 起動しない/落ちる場合、`%LOCALAPPDATA%\CrashDumps` の該当 .dmp 名や時刻があれば
