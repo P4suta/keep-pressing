@@ -28,9 +28,9 @@ public sealed partial class MainPage : Page
         InitializeComponent();
 
         // 対象タブ（SelectorBar）の初期選択を ViewModel.SelectedTarget に合わせる（Tag の enum で対応付け）。
-        TargetSelector.SelectedItem = TargetSelector.Items
-            .OfType<SelectorBarItem>()
-            .First(item => item.Tag is TargetKind kind && kind == ViewModel.SelectedTarget);
+        // SelectorBarItem.Tag の x:Bind は Loading フェーズ（InitializeComponent より後）で評価されるため、
+        // ctor 時点では Tag が未設定。初期同期は Loaded まで遅延し、一致が無い場合も例外にしない。
+        Loaded += OnInitialTargetSync;
 
         ViewModel.PropertyChanged += (_, e) =>
         {
@@ -65,6 +65,16 @@ public sealed partial class MainPage : Page
                     break;
             }
         };
+    }
+
+    // SelectorBarItem.Tag の x:Bind は Loading フェーズで評価される（ctor 時点では未設定）ため、
+    // 対象タブの初期選択は Loaded まで遅延する。一致が無くても例外にしないよう FirstOrDefault を使う。
+    private void OnInitialTargetSync(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnInitialTargetSync;
+        TargetSelector.SelectedItem = TargetSelector.Items
+            .OfType<SelectorBarItem>()
+            .FirstOrDefault(item => item.Tag is TargetKind kind && kind == ViewModel.SelectedTarget);
     }
 
     private void OnCaptureFrameRendering(object? sender, object e) => ViewModel.RefreshLivePosition();
