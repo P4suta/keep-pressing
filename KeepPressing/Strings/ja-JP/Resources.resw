@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ===== 動的文字列（コードから ILocalizer 経由で取得。{n} は string.Format の引数）===== -->
+  <data name="Status_Idle" xml:space="preserve">
+    <value>停止中</value>
+  </data>
+  <data name="Status_Running" xml:space="preserve">
+    <value>実行中: {0}</value>
+  </data>
+  <data name="Status_EmergencyHint" xml:space="preserve">
+    <value>{0}（Esc連打で緊急停止）</value>
+  </data>
+  <data name="Key_Unset" xml:space="preserve">
+    <value>未設定</value>
+  </data>
+  <data name="Toggle_Start" xml:space="preserve">
+    <value>▶ 開始 ({0})</value>
+  </data>
+  <data name="Toggle_Stop" xml:space="preserve">
+    <value>■ 停止 ({0})</value>
+  </data>
+  <data name="Cps_Format" xml:space="preserve">
+    <value>≈ 毎秒 {0} 回</value>
+  </data>
+  <data name="Mouse_Left" xml:space="preserve">
+    <value>左クリック</value>
+  </data>
+  <data name="Mouse_Right" xml:space="preserve">
+    <value>右クリック</value>
+  </data>
+  <data name="Mouse_Middle" xml:space="preserve">
+    <value>中クリック</value>
+  </data>
+  <data name="Mode_Repeat" xml:space="preserve">
+    <value>連打</value>
+  </data>
+  <data name="Mode_Hold" xml:space="preserve">
+    <value>長押し</value>
+  </data>
+  <data name="Target_FixedPos" xml:space="preserve">
+    <value>（固定 {0}, {1}）</value>
+  </data>
+  <data name="Target_CursorPos" xml:space="preserve">
+    <value>（カーソル位置）</value>
+  </data>
+  <data name="Target_Key" xml:space="preserve">
+    <value>キー {0}</value>
+  </data>
+  <data name="Mode_RepeatDesc" xml:space="preserve">
+    <value>{0} を {1}ms 間隔で連打</value>
+  </data>
+  <data name="Mode_HoldDesc" xml:space="preserve">
+    <value>{0} を長押し</value>
+  </data>
+  <data name="Error_IntervalRequired" xml:space="preserve">
+    <value>連打間隔を入力してください。</value>
+  </data>
+  <data name="Error_FixedPosRequired" xml:space="preserve">
+    <value>固定座標の X / Y を入力してください。</value>
+  </data>
+  <data name="Error_KeyRequired" xml:space="preserve">
+    <value>連打するキーを設定してください。</value>
+  </data>
+  <data name="Error_HotkeyConflict" xml:space="preserve">
+    <value>{0} は他のアプリが使用中のため割り当てられませんでした。</value>
+  </data>
+  <data name="Error_RegisterFailed" xml:space="preserve">
+    <value>{0} を登録できませんでした（他のアプリが使用中）。</value>
+  </data>
+  <data name="Error_Faulted" xml:space="preserve">
+    <value>入力の送出中にエラーが発生したため停止しました: {0}</value>
+  </data>
+
+  <!-- ===== 静的 XAML（x:Uid 経由。識別子.プロパティ。添付プロパティは [using:...] 構文）===== -->
+  <data name="HotkeyLabel.Text" xml:space="preserve">
+    <value>開始/停止ホットキー</value>
+  </data>
+  <data name="HotkeySelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>開始停止ホットキー</value>
+  </data>
+  <data name="TargetSelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>連打の対象</value>
+  </data>
+  <data name="TargetMouse.Text" xml:space="preserve">
+    <value>マウス</value>
+  </data>
+  <data name="TargetMouse.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>マウス</value>
+  </data>
+  <data name="TargetKeyboard.Text" xml:space="preserve">
+    <value>キーボード</value>
+  </data>
+  <data name="TargetKeyboard.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>キーボード</value>
+  </data>
+  <data name="MouseSettings.Header" xml:space="preserve">
+    <value>マウス設定</value>
+  </data>
+  <data name="MouseSettings.Description" xml:space="preserve">
+    <value>ボタン・クリック位置の設定</value>
+  </data>
+  <data name="MouseButtonCard.Header" xml:space="preserve">
+    <value>ボタン</value>
+  </data>
+  <data name="MouseButtonSelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>マウスボタン</value>
+  </data>
+  <data name="ClickPositionCard.Header" xml:space="preserve">
+    <value>クリック位置</value>
+  </data>
+  <data name="UseFixedPosition.OnContent" xml:space="preserve">
+    <value>固定座標</value>
+  </data>
+  <data name="UseFixedPosition.OffContent" xml:space="preserve">
+    <value>現在のカーソル位置</value>
+  </data>
+  <data name="UseFixedPosition.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>クリック位置</value>
+  </data>
+  <data name="FixedPositionCard.Header" xml:space="preserve">
+    <value>固定座標</value>
+  </data>
+  <data name="FixedX.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>X 座標</value>
+  </data>
+  <data name="FixedY.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Y 座標</value>
+  </data>
+  <data name="CapturePositionButton.Content" xml:space="preserve">
+    <value>画面から取得</value>
+  </data>
+  <data name="CaptureInfo.Title" xml:space="preserve">
+    <value>座標キャプチャ中</value>
+  </data>
+  <data name="CaptureInfo.Message" xml:space="preserve">
+    <value>目標へマウスを移動し、F8 で確定 / Esc で取消します（この間 F8 と Esc は本アプリが専有します）。</value>
+  </data>
+  <data name="CancelCaptureButton.Content" xml:space="preserve">
+    <value>キャンセル (Esc)</value>
+  </data>
+  <data name="KeyCard.Header" xml:space="preserve">
+    <value>キー</value>
+  </data>
+  <data name="KeyCard.Description" xml:space="preserve">
+    <value>連打するキーを割り当てます</value>
+  </data>
+  <data name="ArmKeyCapture.Content" xml:space="preserve">
+    <value>キーを設定</value>
+  </data>
+  <data name="ArmKeyCapture.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>キーを設定</value>
+  </data>
+  <data name="KeyCaptureHint.Text" xml:space="preserve">
+    <value>このまま割り当てたいキーを押してください。</value>
+  </data>
+  <data name="ActionCard.Header" xml:space="preserve">
+    <value>動作</value>
+  </data>
+  <data name="ActionCard.Description" xml:space="preserve">
+    <value>連打 または 長押し</value>
+  </data>
+  <data name="ModeSelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>動作モード</value>
+  </data>
+  <data name="IntervalCard.Header" xml:space="preserve">
+    <value>間隔 (ms)</value>
+  </data>
+  <data name="IntervalMs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>連打間隔ミリ秒</value>
+  </data>
+  <data name="Hint.Text" xml:space="preserve">
+    <value>ヒント: 開始/停止はホットキーが便利です。実行中は Esc連打でも緊急停止できます。「現在のカーソル位置」モードでこのボタンから開始すると、自アプリの上を連打することになります。</value>
+  </data>
+</root>

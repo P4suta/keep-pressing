@@ -1,5 +1,6 @@
 using KeepPressing.Core;
 using KeepPressing.Interop;
+using KeepPressing.Presentation;
 using KeepPressing.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,6 +22,7 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<ICursorLocator, CursorLocator>();
         services.AddSingleton<IImeGuard, ImeGuard>();
         services.AddSingleton<IUiDispatcher, DispatcherQueueUiDispatcher>();
+        services.AddSingleton<ILocalizer, ResourceStringLocalizer>();
         services.AddTransient<MainPageViewModel>();
         return services;
     }

@@ -18,6 +18,9 @@
     <!-- ポータブル配布の肥大対策: 同梱ローカライズリソースを日本語・英語のみに絞る。
          WinAppSDK の native MUI を取りこぼす分は下部 TrimPortableDistribution ターゲットで剪定する。 -->
     <SatelliteResourceLanguages>en;ja</SatelliteResourceLanguages>
+    <!-- MRT/PRI の既定（フォールバック）言語。表示言語に一致する resw が無いとき en-US を使う。
+         Strings/<lang>/Resources.resw は WinAppSDK の targets が PRIResource として自動収集する。 -->
+    <DefaultLanguage>en-US</DefaultLanguage>
     <!-- CsWin32 生成コード（INPUT union 等）が unsafe を要求する -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

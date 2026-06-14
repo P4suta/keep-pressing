@@ -18,7 +18,7 @@ public class MainPageViewModelTests
         cursor = new FakeCursorLocator();
         synth = new RecordingInputSynthesizer();
         var engine = new PressEngine(synth, TimeProvider.System);
-        return new MainPageViewModel(engine, hotkeys, cursor, new SynchronousUiDispatcher());
+        return new MainPageViewModel(engine, hotkeys, cursor, new SynchronousUiDispatcher(), new FakeLocalizer());
     }
 
     [Fact]

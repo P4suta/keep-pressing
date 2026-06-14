@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using KeepPressing.Core;
 using KeepPressing.Interop;
+using KeepPressing.Presentation;
 
 namespace KeepPressing.App.Tests;
 
@@ -59,4 +60,13 @@ internal sealed class RecordingInputSynthesizer : IInputSynthesizer
     public void Press(InputTarget target) => Presses.Add(target);
     public void Release(InputTarget target) => Releases.Add(target);
     public void Tap(InputTarget target) => Taps.Add(target);
+}
+
+/// <summary>キー（と引数）をそのまま返す <see cref="ILocalizer"/> の Fake（PRI 無しでテスト可能にする）。</summary>
+internal sealed class FakeLocalizer : ILocalizer
+{
+    public string GetString(string key) => key;
+
+    public string Format(string key, params object[] args) =>
+        args.Length == 0 ? key : $"{key}({string.Join(",", args)})";
 }

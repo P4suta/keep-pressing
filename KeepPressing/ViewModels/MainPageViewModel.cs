@@ -23,22 +23,38 @@ public sealed partial class MainPageViewModel : ObservableObject
     private readonly IHotkeyListener _hotkeys;
     private readonly ICursorLocator _cursor;
     private readonly IUiDispatcher _dispatcher;
+    private readonly ILocalizer _loc;
 
     private KeyCode? _capturedKey;
     private TaskCompletionSource<ScreenPoint>? _captureResult;
     private HotkeyChoice _lastHotkey;
 
-    public MainPageViewModel(PressEngine engine, IHotkeyListener hotkeys, ICursorLocator cursor, IUiDispatcher dispatcher)
+    public MainPageViewModel(PressEngine engine, IHotkeyListener hotkeys, ICursorLocator cursor, IUiDispatcher dispatcher, ILocalizer loc)
     {
         (_engine, _hotkeys, _cursor) = (engine, hotkeys, cursor);
         _dispatcher = dispatcher;
+        _loc = loc;
+
+        // 選択肢の表示名は言語依存のため、初期化子ではなく ctor で loc から構築する
+        // （HotkeyChoices は "F5" 等の言語非依存記号なので初期化子のまま）。
+        MouseButtons =
+        [
+            new(MouseButton.Left, loc.GetString("Mouse_Left")),
+            new(MouseButton.Right, loc.GetString("Mouse_Right")),
+            new(MouseButton.Middle, loc.GetString("Mouse_Middle")),
+        ];
+        Modes =
+        [
+            new(PressModeKind.Repeat, loc.GetString("Mode_Repeat")),
+            new(PressModeKind.Hold, loc.GetString("Mode_Hold")),
+        ];
 
         SelectedMouseButton = MouseButtons[0];
         SelectedMode = Modes[0];
-        KeyDisplay = "未設定";
+        KeyDisplay = loc.GetString("Key_Unset");
         IntervalMs = 50;
         LivePositionText = "";
-        StatusText = "停止中";
+        StatusText = loc.GetString("Status_Idle");
 
         // 初期選択を _lastHotkey と一致させることで、setter が走らせる OnSelectedHotkeyChanged を no-op にし、
         // 登録経路を下の明示呼び出し 1 本に統一する（値ベースの再入制御。フラグを持たない）。
@@ -49,7 +65,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         _engine.Faulted += ex => _dispatcher.Post(async () =>
         {
             await _engine.StopAsync();
-            ErrorMessage = $"入力の送出中にエラーが発生したため停止しました: {ex.Message}";
+            ErrorMessage = _loc.Format("Error_Faulted", ex.Message);
         });
 
         _ = ChangeHotkeyAsync(SelectedHotkey);   // 初期ホットキー登録（変更時と同一経路）
@@ -57,18 +73,9 @@ public sealed partial class MainPageViewModel : ObservableObject
 
     // ---- 選択肢（単一の真実の源。XAML は ItemsSource でバインドし、項目の並びを XAML に重複させない）----
 
-    public IReadOnlyList<Choice<MouseButton>> MouseButtons { get; } =
-    [
-        new(MouseButton.Left, "左クリック"),
-        new(MouseButton.Right, "右クリック"),
-        new(MouseButton.Middle, "中クリック"),
-    ];
+    public IReadOnlyList<Choice<MouseButton>> MouseButtons { get; }
 
-    public IReadOnlyList<Choice<PressModeKind>> Modes { get; } =
-    [
-        new(PressModeKind.Repeat, "連打"),
-        new(PressModeKind.Hold, "長押し"),
-    ];
+    public IReadOnlyList<Choice<PressModeKind>> Modes { get; }
 
     public IReadOnlyList<HotkeyChoice> HotkeyChoices { get; } =
     [
@@ -144,8 +151,10 @@ public sealed partial class MainPageViewModel : ObservableObject
     public bool IsRepeatMode => SelectedMode.Value is PressModeKind.Repeat;
     public bool IsNotRunning => !IsRunning;
     public bool HasError => ErrorMessage is not null;
-    public string ToggleButtonLabel => IsRunning ? $"■ 停止 ({SelectedHotkey.DisplayKey})" : $"▶ 開始 ({SelectedHotkey.DisplayKey})";
-    public string CpsText => $"≈ 毎秒 {1000 / Math.Max(IntervalMs, 1):0} 回";
+    public string ToggleButtonLabel => IsRunning
+        ? _loc.Format("Toggle_Stop", SelectedHotkey.DisplayKey)
+        : _loc.Format("Toggle_Start", SelectedHotkey.DisplayKey);
+    public string CpsText => _loc.Format("Cps_Format", (long)Math.Round(1000 / Math.Max(IntervalMs, 1)));
 
     // ---- 開始 / 停止 ----------------------------------------------------
 
@@ -182,15 +191,14 @@ public sealed partial class MainPageViewModel : ObservableObject
             _capturedKey,
             SelectedMode.Value,
             IntervalMs);
-        return SpecBuilder.TryBuild(config, out spec, out error);
+        return SpecBuilder.TryBuild(config, _loc, out spec, out error);
     }
 
     private void OnEngineState(EngineState state)
     {
         IsRunning = state is EngineState.Running;
-        StatusText = IsRunning
-            ? $"{SpecDescriber.Describe(state, KeyDisplay)}（Esc連打で緊急停止）"
-            : SpecDescriber.Describe(state, KeyDisplay);
+        var describe = SpecDescriber.Describe(state, KeyDisplay, _loc);
+        StatusText = IsRunning ? _loc.Format("Status_EmergencyHint", describe) : describe;
 
         // 緊急脱出: 実行中だけ Esc を全体登録する。連打中は対象ウィンドウにフォーカスが奪われ
         // 設定したホットキーも忘れがちなので、誰でも知っている Esc を停止専用キーにする。
@@ -253,7 +261,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         }
 
         // 競合: 直前のキーへ巻き戻して再登録する。
-        ErrorMessage = $"{choice.DisplayKey} は他のアプリが使用中のため割り当てられませんでした。";
+        ErrorMessage = _loc.Format("Error_HotkeyConflict", choice.DisplayKey);
         SelectedHotkey = _lastHotkey;
         await _hotkeys.RegisterAsync(HotkeyId.Toggle, HotkeyModifiers.None, (ushort)_lastHotkey.Vk);
     }
@@ -265,14 +273,14 @@ public sealed partial class MainPageViewModel : ObservableObject
     {
         if (!await _hotkeys.RegisterAsync(HotkeyId.CaptureConfirm, HotkeyModifiers.None, (ushort)VirtualKey.F8))
         {
-            ErrorMessage = "F8 を登録できませんでした（他のアプリが使用中）。";
+            ErrorMessage = _loc.Format("Error_RegisterFailed", "F8");
             return;
         }
 
         if (!await _hotkeys.RegisterAsync(HotkeyId.CaptureCancel, HotkeyModifiers.None, (ushort)VirtualKey.Escape))
         {
             await _hotkeys.UnregisterAsync(HotkeyId.CaptureConfirm);
-            ErrorMessage = "Esc を登録できませんでした（他のアプリが使用中）。";
+            ErrorMessage = _loc.Format("Error_RegisterFailed", "Esc");
             return;
         }
 

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ===== 動的文字列（コードから ILocalizer 経由で取得。{n} は string.Format の引数）===== -->
+  <data name="Status_Idle" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Status_Running" xml:space="preserve">
+    <value>Running: {0}</value>
+  </data>
+  <data name="Status_EmergencyHint" xml:space="preserve">
+    <value>{0} (mash Esc for emergency stop)</value>
+  </data>
+  <data name="Key_Unset" xml:space="preserve">
+    <value>Not set</value>
+  </data>
+  <data name="Toggle_Start" xml:space="preserve">
+    <value>▶ Start ({0})</value>
+  </data>
+  <data name="Toggle_Stop" xml:space="preserve">
+    <value>■ Stop ({0})</value>
+  </data>
+  <data name="Cps_Format" xml:space="preserve">
+    <value>≈ {0}/sec</value>
+  </data>
+  <data name="Mouse_Left" xml:space="preserve">
+    <value>Left click</value>
+  </data>
+  <data name="Mouse_Right" xml:space="preserve">
+    <value>Right click</value>
+  </data>
+  <data name="Mouse_Middle" xml:space="preserve">
+    <value>Middle click</value>
+  </data>
+  <data name="Mode_Repeat" xml:space="preserve">
+    <value>Repeat</value>
+  </data>
+  <data name="Mode_Hold" xml:space="preserve">
+    <value>Hold</value>
+  </data>
+  <data name="Target_FixedPos" xml:space="preserve">
+    <value> (fixed {0}, {1})</value>
+  </data>
+  <data name="Target_CursorPos" xml:space="preserve">
+    <value> (cursor position)</value>
+  </data>
+  <data name="Target_Key" xml:space="preserve">
+    <value>key {0}</value>
+  </data>
+  <data name="Mode_RepeatDesc" xml:space="preserve">
+    <value>repeat {0} every {1}ms</value>
+  </data>
+  <data name="Mode_HoldDesc" xml:space="preserve">
+    <value>hold {0}</value>
+  </data>
+  <data name="Error_IntervalRequired" xml:space="preserve">
+    <value>Enter the press interval.</value>
+  </data>
+  <data name="Error_FixedPosRequired" xml:space="preserve">
+    <value>Enter the fixed X / Y coordinates.</value>
+  </data>
+  <data name="Error_KeyRequired" xml:space="preserve">
+    <value>Set the key to press.</value>
+  </data>
+  <data name="Error_HotkeyConflict" xml:space="preserve">
+    <value>{0} couldn't be assigned because another app is using it.</value>
+  </data>
+  <data name="Error_RegisterFailed" xml:space="preserve">
+    <value>Couldn't register {0} (another app is already using it).</value>
+  </data>
+  <data name="Error_Faulted" xml:space="preserve">
+    <value>Stopped because an error occurred while sending input: {0}</value>
+  </data>
+
+  <!-- ===== 静的 XAML（x:Uid 経由。識別子.プロパティ。添付プロパティは [using:...] 構文）===== -->
+  <data name="HotkeyLabel.Text" xml:space="preserve">
+    <value>Start/Stop hotkey</value>
+  </data>
+  <data name="HotkeySelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Start/stop hotkey</value>
+  </data>
+  <data name="TargetSelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Press target</value>
+  </data>
+  <data name="TargetMouse.Text" xml:space="preserve">
+    <value>Mouse</value>
+  </data>
+  <data name="TargetMouse.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mouse</value>
+  </data>
+  <data name="TargetKeyboard.Text" xml:space="preserve">
+    <value>Keyboard</value>
+  </data>
+  <data name="TargetKeyboard.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Keyboard</value>
+  </data>
+  <data name="MouseSettings.Header" xml:space="preserve">
+    <value>Mouse settings</value>
+  </data>
+  <data name="MouseSettings.Description" xml:space="preserve">
+    <value>Button and click position</value>
+  </data>
+  <data name="MouseButtonCard.Header" xml:space="preserve">
+    <value>Button</value>
+  </data>
+  <data name="MouseButtonSelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Mouse button</value>
+  </data>
+  <data name="ClickPositionCard.Header" xml:space="preserve">
+    <value>Click position</value>
+  </data>
+  <data name="UseFixedPosition.OnContent" xml:space="preserve">
+    <value>Fixed coordinates</value>
+  </data>
+  <data name="UseFixedPosition.OffContent" xml:space="preserve">
+    <value>Current cursor position</value>
+  </data>
+  <data name="UseFixedPosition.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Click position</value>
+  </data>
+  <data name="FixedPositionCard.Header" xml:space="preserve">
+    <value>Fixed coordinates</value>
+  </data>
+  <data name="FixedX.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>X coordinate</value>
+  </data>
+  <data name="FixedY.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Y coordinate</value>
+  </data>
+  <data name="CapturePositionButton.Content" xml:space="preserve">
+    <value>Pick on screen</value>
+  </data>
+  <data name="CaptureInfo.Title" xml:space="preserve">
+    <value>Capturing position</value>
+  </data>
+  <data name="CaptureInfo.Message" xml:space="preserve">
+    <value>Move the mouse to the target, then press F8 to confirm or Esc to cancel. (F8 and Esc are reserved by this app meanwhile.)</value>
+  </data>
+  <data name="CancelCaptureButton.Content" xml:space="preserve">
+    <value>Cancel (Esc)</value>
+  </data>
+  <data name="KeyCard.Header" xml:space="preserve">
+    <value>Key</value>
+  </data>
+  <data name="KeyCard.Description" xml:space="preserve">
+    <value>Assign the key to press</value>
+  </data>
+  <data name="ArmKeyCapture.Content" xml:space="preserve">
+    <value>Set key</value>
+  </data>
+  <data name="ArmKeyCapture.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Set key</value>
+  </data>
+  <data name="KeyCaptureHint.Text" xml:space="preserve">
+    <value>Press the key you want to assign.</value>
+  </data>
+  <data name="ActionCard.Header" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="ActionCard.Description" xml:space="preserve">
+    <value>Repeat or hold</value>
+  </data>
+  <data name="ModeSelector.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Action mode</value>
+  </data>
+  <data name="IntervalCard.Header" xml:space="preserve">
+    <value>Interval (ms)</value>
+  </data>
+  <data name="IntervalMs.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Press interval in milliseconds</value>
+  </data>
+  <data name="Hint.Text" xml:space="preserve">
+    <value>Tip: Hotkeys make starting and stopping easy. While running, you can also mash Esc for an emergency stop. If you start from this button in "current cursor position" mode, you'll end up pressing on this app itself.</value>
+  </data>
+</root>

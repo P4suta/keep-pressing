@@ -17,16 +17,17 @@ public sealed record PressConfiguration(
 
 /// <summary>
 /// UI の選択状態（<see cref="PressConfiguration"/>）をドメイン型（<see cref="PressSpec"/>）へ翻訳する純粋関数。
-/// 副作用を持たず UI/Win32 にも依存しないため、単体テストの対象にできる（翻訳の単一点）。
+/// 副作用を持たず UI/Win32 にも依存しない。エラー文言は <see cref="ILocalizer"/> 経由で受け取るため、
+/// 翻訳の単一点でありながら単体テスト可能（テストは Fake ローカライザを渡す）。
 /// </summary>
 public static class SpecBuilder
 {
-    public static bool TryBuild(PressConfiguration config, out PressSpec spec, out string? error)
+    public static bool TryBuild(PressConfiguration config, ILocalizer loc, out PressSpec spec, out string? error)
     {
         // NumberBox は空欄のとき NaN を返すため、ドメイン型へ翻訳する前にここで弾く。
         if (config.Mode is PressModeKind.Repeat && double.IsNaN(config.IntervalMs))
         {
-            (spec, error) = (null!, "連打間隔を入力してください。");
+            (spec, error) = (null!, loc.GetString("Error_IntervalRequired"));
             return false;
         }
 
@@ -35,7 +36,7 @@ public static class SpecBuilder
         {
             if (config.UseFixedPosition && (double.IsNaN(config.FixedX) || double.IsNaN(config.FixedY)))
             {
-                (spec, error) = (null!, "固定座標の X / Y を入力してください。");
+                (spec, error) = (null!, loc.GetString("Error_FixedPosRequired"));
                 return false;
             }
 
@@ -50,7 +51,7 @@ public static class SpecBuilder
         }
         else
         {
-            (spec, error) = (null!, "連打するキーを設定してください。");
+            (spec, error) = (null!, loc.GetString("Error_KeyRequired"));
             return false;
         }
 

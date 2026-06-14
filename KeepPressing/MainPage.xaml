@@ -43,12 +43,12 @@
                     Orientation="Horizontal"
                     Spacing="8">
                     <TextBlock
+                        x:Uid="HotkeyLabel"
                         VerticalAlignment="Center"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="開始/停止ホットキー" />
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <ComboBox
+                        x:Uid="HotkeySelector"
                         AutomationProperties.AutomationId="HotkeySelector"
-                        AutomationProperties.Name="開始停止ホットキー"
                         MinWidth="90"
                         DisplayMemberPath="DisplayKey"
                         IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
@@ -90,16 +90,16 @@
                         <!-- 対象（マウス / キーボード）をタブ切り替え -->
                         <SelectorBar
                             x:Name="TargetSelector"
+                            x:Uid="TargetSelector"
                             AutomationProperties.AutomationId="TargetKind"
-                            AutomationProperties.Name="連打の対象"
                             HorizontalAlignment="Center"
                             SelectionChanged="OnTargetSelectionChanged">
-                            <SelectorBarItem AutomationProperties.Name="マウス" Tag="{x:Bind vm:TargetKind.Mouse}" Text="マウス">
+                            <SelectorBarItem x:Uid="TargetMouse" Tag="{x:Bind vm:TargetKind.Mouse}">
                                 <SelectorBarItem.Icon>
                                     <FontIcon Glyph="&#xE962;" />
                                 </SelectorBarItem.Icon>
                             </SelectorBarItem>
-                            <SelectorBarItem AutomationProperties.Name="キーボード" Tag="{x:Bind vm:TargetKind.Keyboard}" Text="キーボード">
+                            <SelectorBarItem x:Uid="TargetKeyboard" Tag="{x:Bind vm:TargetKind.Keyboard}">
                                 <SelectorBarItem.Icon>
                                     <FontIcon Glyph="&#xE765;" />
                                 </SelectorBarItem.Icon>
@@ -109,66 +109,62 @@
                         <!-- マウス設定 -->
                         <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsMouseTarget, Mode=OneWay}">
                             <controls:SettingsExpander
-                                Description="ボタン・クリック位置の設定"
-                                Header="マウス設定"
+                                x:Uid="MouseSettings"
                                 IsExpanded="True">
                                 <controls:SettingsExpander.HeaderIcon>
                                     <FontIcon Glyph="&#xE962;" />
                                 </controls:SettingsExpander.HeaderIcon>
                                 <controls:SettingsExpander.Items>
-                                    <controls:SettingsCard Header="ボタン">
+                                    <controls:SettingsCard x:Uid="MouseButtonCard">
                                         <ComboBox
+                                            x:Uid="MouseButtonSelector"
                                             AutomationProperties.AutomationId="MouseButtonSelector"
-                                            AutomationProperties.Name="マウスボタン"
                                             MinWidth="160"
                                             DisplayMemberPath="DisplayName"
                                             ItemsSource="{x:Bind ViewModel.MouseButtons}"
                                             SelectedItem="{x:Bind ViewModel.SelectedMouseButton, Mode=TwoWay}" />
                                     </controls:SettingsCard>
 
-                                    <controls:SettingsCard Header="クリック位置">
+                                    <controls:SettingsCard x:Uid="ClickPositionCard">
                                         <ToggleSwitch
+                                            x:Uid="UseFixedPosition"
                                             AutomationProperties.AutomationId="UseFixedPosition"
-                                            AutomationProperties.Name="クリック位置"
-                                            IsOn="{x:Bind ViewModel.UseFixedPosition, Mode=TwoWay}"
-                                            OffContent="現在のカーソル位置"
-                                            OnContent="固定座標" />
+                                            IsOn="{x:Bind ViewModel.UseFixedPosition, Mode=TwoWay}" />
                                     </controls:SettingsCard>
 
-                                    <controls:SettingsCard Header="固定座標" Visibility="{x:Bind ViewModel.UseFixedPosition, Mode=OneWay}">
+                                    <controls:SettingsCard x:Uid="FixedPositionCard" Visibility="{x:Bind ViewModel.UseFixedPosition, Mode=OneWay}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <NumberBox
+                                                x:Uid="FixedX"
                                                 AutomationProperties.AutomationId="FixedX"
-                                                AutomationProperties.Name="X 座標"
                                                 Header="X"
                                                 MinWidth="100"
                                                 SmallChange="1"
                                                 SpinButtonPlacementMode="Compact"
                                                 Value="{x:Bind ViewModel.FixedX, Mode=TwoWay}" />
                                             <NumberBox
+                                                x:Uid="FixedY"
                                                 AutomationProperties.AutomationId="FixedY"
-                                                AutomationProperties.Name="Y 座標"
                                                 Header="Y"
                                                 MinWidth="100"
                                                 SmallChange="1"
                                                 SpinButtonPlacementMode="Compact"
                                                 Value="{x:Bind ViewModel.FixedY, Mode=TwoWay}" />
                                             <Button
+                                                x:Uid="CapturePositionButton"
                                                 AutomationProperties.AutomationId="CapturePosition"
                                                 VerticalAlignment="Bottom"
-                                                Command="{x:Bind ViewModel.CapturePositionCommand}"
-                                                Content="画面から取得" />
+                                                Command="{x:Bind ViewModel.CapturePositionCommand}" />
                                         </StackPanel>
                                     </controls:SettingsCard>
                                 </controls:SettingsExpander.Items>
                             </controls:SettingsExpander>
 
                             <InfoBar
+                                x:Uid="CaptureInfo"
                                 AutomationProperties.AutomationId="CaptureInfo"
-                                Title="座標キャプチャ中"
                                 IsClosable="False"
                                 IsOpen="{x:Bind ViewModel.IsCapturingPosition, Mode=OneWay}"
-                                Message="目標へマウスを移動し、F8 で確定 / Esc で取消します（この間 F8 と Esc は本アプリが専有します）。"
                                 Severity="Informational">
                                 <StackPanel Margin="0,0,0,12" Orientation="Horizontal" Spacing="12">
                                     <TextBlock
@@ -177,16 +173,16 @@
                                         FontWeight="SemiBold"
                                         Text="{x:Bind ViewModel.LivePositionText, Mode=OneWay}" />
                                     <Button
+                                        x:Uid="CancelCaptureButton"
                                         AutomationProperties.AutomationId="CancelCapture"
-                                        Command="{x:Bind ViewModel.CapturePositionCancelCommand}"
-                                        Content="キャンセル (Esc)" />
+                                        Command="{x:Bind ViewModel.CapturePositionCancelCommand}" />
                                 </StackPanel>
                             </InfoBar>
                         </StackPanel>
 
                         <!-- キーボード設定 -->
                         <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsKeyboardTarget, Mode=OneWay}">
-                            <controls:SettingsCard Description="連打するキーを割り当てます" Header="キー">
+                            <controls:SettingsCard x:Uid="KeyCard">
                                 <controls:SettingsCard.HeaderIcon>
                                     <FontIcon Glyph="&#xE765;" />
                                 </controls:SettingsCard.HeaderIcon>
@@ -200,35 +196,34 @@
                                         FontWeight="SemiBold"
                                         Text="{x:Bind ViewModel.KeyDisplay, Mode=OneWay}" />
                                     <ToggleButton
+                                        x:Uid="ArmKeyCapture"
                                         AutomationProperties.AutomationId="ArmKeyCapture"
-                                        AutomationProperties.Name="キーを設定"
-                                        Content="キーを設定"
                                         IsChecked="{x:Bind ViewModel.IsKeyCaptureArmed, Mode=TwoWay}" />
                                 </StackPanel>
                             </controls:SettingsCard>
                             <TextBlock
+                                x:Uid="KeyCaptureHint"
                                 Margin="4,0,0,0"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="このまま割り当てたいキーを押してください。"
                                 Visibility="{x:Bind ViewModel.IsKeyCaptureArmed, Mode=OneWay}" />
                         </StackPanel>
 
                         <!-- 動作 -->
-                        <controls:SettingsCard Description="連打 または 長押し" Header="動作">
+                        <controls:SettingsCard x:Uid="ActionCard">
                             <controls:SettingsCard.HeaderIcon>
                                 <FontIcon Glyph="&#xE8EE;" />
                             </controls:SettingsCard.HeaderIcon>
                             <ComboBox
+                                x:Uid="ModeSelector"
                                 AutomationProperties.AutomationId="ModeSelector"
-                                AutomationProperties.Name="動作モード"
                                 MinWidth="160"
                                 DisplayMemberPath="DisplayName"
                                 ItemsSource="{x:Bind ViewModel.Modes}"
                                 SelectedItem="{x:Bind ViewModel.SelectedMode, Mode=TwoWay}" />
                         </controls:SettingsCard>
 
-                        <controls:SettingsCard Header="間隔 (ms)" Visibility="{x:Bind ViewModel.IsRepeatMode, Mode=OneWay}">
+                        <controls:SettingsCard x:Uid="IntervalCard" Visibility="{x:Bind ViewModel.IsRepeatMode, Mode=OneWay}">
                             <controls:SettingsCard.HeaderIcon>
                                 <FontIcon Glyph="&#xE916;" />
                             </controls:SettingsCard.HeaderIcon>
@@ -237,8 +232,8 @@
                                 Orientation="Horizontal"
                                 Spacing="12">
                                 <NumberBox
+                                    x:Uid="IntervalMs"
                                     AutomationProperties.AutomationId="IntervalMs"
-                                    AutomationProperties.Name="連打間隔ミリ秒"
                                     Maximum="10000"
                                     MinWidth="140"
                                     Minimum="10"
@@ -256,9 +251,9 @@
                 </ContentControl>
 
                 <TextBlock
+                    x:Uid="Hint"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                     Style="{StaticResource CaptionTextBlockStyle}"
-                    Text="ヒント: 開始/停止はホットキーが便利です。実行中は Esc連打でも緊急停止できます。「現在のカーソル位置」モードでこのボタンから開始すると、自アプリの上を連打することになります。"
                     TextWrapping="Wrap" />
             </StackPanel>
         </ScrollViewer>
