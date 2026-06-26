@@ -4,10 +4,9 @@ using KeepPressing.Core;
 namespace KeepPressing.Presentation;
 
 /// <summary>
-/// ドメイン状態（<see cref="EngineState"/> / <see cref="PressSpec"/>）を表示文字列へ整形する純粋関数。
-/// 文言は <see cref="ILocalizer"/> 経由で受け取り、Core に表示文言を置かずテスト可能性も保つ。
-/// 語順が言語で異なるため、対象部分（クリック種別＋位置）を組み立ててから動作の書式に差し込む。
-/// キー対象の表示名は VM 由来のため引数で受ける。
+/// Pure function formatting domain state (<see cref="EngineState"/> / <see cref="PressSpec"/>) into display
+/// strings via <see cref="ILocalizer"/>. The target part (button + position) is built first, then inserted
+/// into the action format, since word order varies by language. The key display name comes from the VM.
 /// </summary>
 public static class SpecDescriber
 {

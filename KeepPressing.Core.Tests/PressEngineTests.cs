@@ -20,7 +20,7 @@ public sealed class PressEngineTests
 
         engine.Start(Repeat50());
 
-        // do-while のため 1 打目は Start 内で同期送出される。
+        // The do-while sends the first tap synchronously inside Start.
         (InputAction, InputTarget)[] expected = [(InputAction.Press, LeftClick), (InputAction.Release, LeftClick)];
         Assert.Equal(expected, fake.Log);
     }
@@ -33,14 +33,14 @@ public sealed class PressEngineTests
         await using var engine = new PressEngine(fake, time);
         engine.Start(Repeat50());
 
-        time.Advance(TimeSpan.FromMilliseconds(49));   // 境界の手前 — tick しない
+        time.Advance(TimeSpan.FromMilliseconds(49));   // Just before the boundary — no tick.
         await Task.Delay(50);
         Assert.Equal(2, fake.Log.Count);
 
-        time.Advance(TimeSpan.FromMilliseconds(1));    // ちょうど 50ms — 2 打目
+        time.Advance(TimeSpan.FromMilliseconds(1));    // Exactly 50ms — second tap.
         await fake.WaitForCountAsync(4);
 
-        time.Advance(TimeSpan.FromMilliseconds(50));   // 3 打目
+        time.Advance(TimeSpan.FromMilliseconds(50));   // Third tap.
         await fake.WaitForCountAsync(6);
     }
 
@@ -103,7 +103,7 @@ public sealed class PressEngineTests
 
         await engine.StopAsync();
 
-        // 「StopAsync 完了 = Up 送出済み」の API 契約。
+        // API contract: StopAsync completed means Up was sent.
         (InputAction, InputTarget)[] expected = [(InputAction.Press, LeftClick), (InputAction.Release, LeftClick)];
         Assert.Equal(expected, fake.Log);
     }
@@ -154,7 +154,7 @@ public sealed class PressEngineTests
         await engine.StopAsync();
 
         EngineState[] expected = [new EngineState.Running(spec), EngineState.Idle.Instance];
-        Assert.Equal(expected, states);   // record 等値性で Spec ごと比較
+        Assert.Equal(expected, states);   // Record equality compares the Spec too.
     }
 
     [Fact]
@@ -162,9 +162,9 @@ public sealed class PressEngineTests
     {
         InputTarget[] targets =
         [
-            new InputTarget.Mouse(MouseButton.Right, new ScreenPoint(100, 200)),  // 固定座標
-            new InputTarget.Mouse(MouseButton.Middle),                            // 現在カーソル位置
-            new InputTarget.Key(new KeyCode(0x41)),                               // キー
+            new InputTarget.Mouse(MouseButton.Right, new ScreenPoint(100, 200)),  // Fixed position
+            new InputTarget.Mouse(MouseButton.Middle),                            // Current cursor position
+            new InputTarget.Key(new KeyCode(0x41)),                               // Key
         ];
 
         foreach (var target in targets)
@@ -199,13 +199,13 @@ public sealed class PressEngineTests
 
         engine.Start(Repeat50());
 
-        Assert.Same(boom, captured);                        // 1 打目は Start 内で走るため同期発火
-        Assert.IsType<EngineState.Running>(engine.State);   // 遷移の所有権は StopAsync — まだ Running
+        Assert.Same(boom, captured);                        // First tap runs inside Start, so it fires synchronously.
+        Assert.IsType<EngineState.Running>(engine.State);   // StopAsync owns transitions — still Running.
 
         await engine.StopAsync();
         Assert.Same(EngineState.Idle.Instance, engine.State);
 
-        fake.ThrowOnTap = null;                             // 故障解除後は再 Start 可能
+        fake.ThrowOnTap = null;                             // Restartable once the fault is cleared.
         engine.Start(Repeat50());
         await fake.WaitForCountAsync(2);
     }

@@ -4,7 +4,7 @@ using KeepPressing.ViewModels;
 
 namespace KeepPressing.Presentation;
 
-/// <summary>UI の選択状態のスナップショット（<see cref="SpecBuilder"/> の入力）。</summary>
+/// <summary>Snapshot of the UI selection, input to <see cref="SpecBuilder"/>.</summary>
 public sealed record PressConfiguration(
     TargetKind Target,
     MouseButton MouseButton,
@@ -16,15 +16,15 @@ public sealed record PressConfiguration(
     double IntervalMs);
 
 /// <summary>
-/// UI の選択状態（<see cref="PressConfiguration"/>）をドメイン型（<see cref="PressSpec"/>）へ翻訳する純粋関数。
-/// 副作用を持たず UI/Win32 にも依存しない。エラー文言は <see cref="ILocalizer"/> 経由で受け取るため、
-/// 翻訳の単一点でありながら単体テスト可能（テストは Fake ローカライザを渡す）。
+/// Pure function translating the UI selection (<see cref="PressConfiguration"/>) into the domain type
+/// (<see cref="PressSpec"/>). No side effects, no UI/Win32 dependency; error strings come via
+/// <see cref="ILocalizer"/>, so it stays unit-testable with a fake localizer.
 /// </summary>
 public static class SpecBuilder
 {
     public static bool TryBuild(PressConfiguration config, ILocalizer loc, out PressSpec spec, out string? error)
     {
-        // NumberBox は空欄のとき NaN を返すため、ドメイン型へ翻訳する前にここで弾く。
+        // NumberBox returns NaN when empty, so reject it before translating to the domain type.
         if (config.Mode is PressModeKind.Repeat && double.IsNaN(config.IntervalMs))
         {
             (spec, error) = (null!, loc.GetString("Error_IntervalRequired"));

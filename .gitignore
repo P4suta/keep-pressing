@@ -38,7 +38,7 @@ BundleArtifacts/
 *.appxbundle
 *.appxupload
 
-# Publish output (publish.ps1 で再生成可能)
+# Publish output
 publish/
 dist/
 *.pubxml.user
@@ -54,17 +54,17 @@ _ReSharper*/
 Generated\ Files/
 *_wpftmp.csproj
 
-# 署名鍵・証明書(誤コミット防止)。署名情報は release Environment の Secret で管理する
+# Signing keys / certificates (prevent accidental commits); signing material lives in release Environment secrets
 *.pfx
 *.p12
 *.pem
 *.key
 *.snk
 
-# SBOM 出力(リリース時に生成)
+# SBOM output (generated at release)
 sbom/
 
-# アイコン生成の作業ディレクトリ(`just icons` が一時利用)
+# Icon generation work directory (used by `just icons`)
 assets-src/.iconwork/
-# アイコンのプレビュー/検証用中間画像
+# Icon preview/verification intermediates
 assets-src/.chk/

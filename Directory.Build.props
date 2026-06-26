@@ -1,33 +1,29 @@
 <Project>
   <!--
-    全プロジェクト共通の言語・品質規約の単一ソース。
-    プロジェクト固有値（TargetFramework, PlatformTarget, OutputType 等）は各 .csproj に残す。
-    Core 固有の ConfigureAwait 強制（CA2007=error）は KeepPressing.Core/.editorconfig が担い、
-    UI 層へは波及させない（UI スレッド復帰の素の await を壊さないため）。
+    Single source of shared language and quality conventions. Project-specific values (TargetFramework,
+    PlatformTarget, OutputType, etc.) stay in each .csproj. Core's ConfigureAwait enforcement (CA2007=error)
+    lives in KeepPressing.Core/.editorconfig and is not propagated to the UI layer (which relies on plain
+    awaits resuming on the UI thread).
   -->
   <PropertyGroup>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
     <!--
-      net*-windows ターゲットを非 Windows ホストでも restore できるようにする（NETSDK1100 回避）。
-      GitHub の Automatic Dependency Submission(Ubuntu) 等、Linux 上の dotnet restore が通り
-      NuGet 依存グラフが正しく送信される（Dependabot アラート/dependency-review の基盤）。
-      Windows 実機での build/publish の出力には影響しない。
+      Allow restoring net*-windows targets on non-Windows hosts (avoids NETSDK1100), so dotnet restore on
+      Linux (e.g. GitHub Automatic Dependency Submission on Ubuntu) succeeds and submits the NuGet dependency
+      graph that backs Dependabot alerts and dependency-review. No effect on Windows build/publish output.
     -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
 
-    <!--
-      .NET アナライザとコードスタイルをビルドで機械的に強制する（従来は Core にも UI にも明示設定がなかった）。
-      TreatWarningsAsErrors は WinUI/CsWin32 生成コード由来の警告を潰し切った最終段階で有効化する。
-    -->
+    <!-- Enforce .NET analyzers and code style at build time. -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-Recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!--
-      0 警告を潰し切った最終段として、Debug ビルドでは警告をエラー化し品質規律をビルドで固定する。
-      Release/publish は WinAppSDK 由来の IL2104 トリム警告（抑制困難）が出るため対象外にする。
+      Treat warnings as errors in Debug to gate quality at build time. Release/publish is excluded because
+      WinAppSDK emits IL2104 trim warnings that are hard to suppress.
     -->
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Debug'">true</TreatWarningsAsErrors>
   </PropertyGroup>

@@ -35,7 +35,7 @@ public class MainPageViewModelTests
         var f7 = vm.HotkeyChoices.First(h => h.Vk == VirtualKey.F7);
         hotkeys.RejectVks.Add((ushort)VirtualKey.F7);
 
-        vm.SelectedHotkey = f7;   // 拒否 → 直前の F6 へ巻き戻る
+        vm.SelectedHotkey = f7;   // Rejected -> reverts to the previous F6.
 
         Assert.Equal(VirtualKey.F6, vm.SelectedHotkey.Vk);
         Assert.NotNull(vm.ErrorMessage);
@@ -86,7 +86,7 @@ public class MainPageViewModelTests
         cursor.Current = new ScreenPoint(123, 456);
 
         var capture = vm.CapturePositionCommand.ExecuteAsync(null);
-        Assert.True(vm.IsCapturingPosition);   // F8/Esc 登録後、確定待ち
+        Assert.True(vm.IsCapturingPosition);   // After F8/Esc registration, awaiting confirm.
         hotkeys.Raise(HotkeyId.CaptureConfirm);
         await capture;
 
@@ -94,7 +94,7 @@ public class MainPageViewModelTests
         Assert.Equal(456, vm.FixedY);
         Assert.True(vm.UseFixedPosition);
         Assert.False(vm.IsCapturingPosition);
-        Assert.Contains(HotkeyId.CaptureConfirm, hotkeys.Unregistered);   // finally で解除
+        Assert.Contains(HotkeyId.CaptureConfirm, hotkeys.Unregistered);   // Unregistered in finally.
         Assert.Contains(HotkeyId.CaptureCancel, hotkeys.Unregistered);
     }
 
@@ -108,7 +108,7 @@ public class MainPageViewModelTests
         hotkeys.Raise(HotkeyId.CaptureCancel);
         await capture;
 
-        Assert.Equal(0, vm.FixedX);   // 既定のまま変化なし
+        Assert.Equal(0, vm.FixedX);   // Unchanged from default.
         Assert.Equal(0, vm.FixedY);
         Assert.False(vm.IsCapturingPosition);
     }
@@ -119,12 +119,12 @@ public class MainPageViewModelTests
         var vm = CreateViewModel(out var hotkeys, out _, out var synth);
         vm.SelectedTarget = TargetKind.Mouse;
 
-        await vm.ToggleCommand.ExecuteAsync(null);   // 開始
+        await vm.ToggleCommand.ExecuteAsync(null);   // Start
         Assert.True(vm.IsRunning);
         Assert.Contains(hotkeys.Registered, r => r.Id == HotkeyId.EmergencyStop);
         Assert.Contains(synth.Taps, t => t is InputTarget.Mouse m && m.Button == MouseButton.Left);
 
-        await vm.ToggleCommand.ExecuteAsync(null);   // 停止
+        await vm.ToggleCommand.ExecuteAsync(null);   // Stop
         Assert.False(vm.IsRunning);
         Assert.Contains(HotkeyId.EmergencyStop, hotkeys.Unregistered);
     }

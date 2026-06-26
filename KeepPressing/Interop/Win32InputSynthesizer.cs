@@ -7,16 +7,14 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace KeepPressing.Interop;
 
-/// <summary>
-/// SendInput による <see cref="IInputSynthesizer"/> 実装。ステートレスでスレッドセーフ。
-/// </summary>
+/// <summary>SendInput-based <see cref="IInputSynthesizer"/>. Stateless and thread-safe.</summary>
 public sealed class Win32InputSynthesizer : IInputSynthesizer
 {
     public void Press(InputTarget target) => Send([Build(target, down: true)]);
 
     public void Release(InputTarget target) => Send([Build(target, down: false)]);
 
-    /// <summary>Down→Up を 1 回の SendInput で送出する。呼び出し内のイベント列には他入力が割り込まない。</summary>
+    /// <summary>Sends Down then Up in one SendInput call so no other input interleaves between them.</summary>
     public void Tap(InputTarget target) => Send([Build(target, down: true), Build(target, down: false)]);
 
     private static unsafe void Send(ReadOnlySpan<INPUT> inputs)
@@ -24,8 +22,8 @@ public sealed class Win32InputSynthesizer : IInputSynthesizer
         var sent = PInvoke.SendInput(inputs, sizeof(INPUT));
         if (sent != inputs.Length)
         {
-            // UIPI（昇格ウィンドウへの遮断）は無音で起きるため、例外でループを殺さず記録に留める。
-            Debug.WriteLine($"SendInput: {inputs.Length} 件中 {sent} 件しか送出されなかった。");
+            // UIPI blocks to elevated windows fail silently, so log instead of throwing and killing the loop.
+            Debug.WriteLine($"SendInput sent {sent} of {inputs.Length} inputs.");
         }
     }
 
@@ -52,8 +50,8 @@ public sealed class Win32InputSynthesizer : IInputSynthesizer
         var (dx, dy) = (0, 0);
         if (mouse.Position is { } position)
         {
-            // Down/Up 双方に move を合成する: Hold 中に物理マウスが動いても Up は固定点で発生し、
-            // 意図しないドラッグにならない。メトリクスは毎回取得してモニタ構成の変化に追従する。
+            // Fold the move into both Down and Up so that even if the physical mouse moves during a hold,
+            // Up still lands at the fixed point and never drags. Metrics are read each time to track monitor changes.
             (dx, dy) = VirtualScreen.Normalize(position, GetVirtualScreenRect());
             flags |= MOUSE_EVENT_FLAGS.MOUSEEVENTF_MOVE
                    | MOUSE_EVENT_FLAGS.MOUSEEVENTF_ABSOLUTE
@@ -78,15 +76,15 @@ public sealed class Win32InputSynthesizer : IInputSynthesizer
 
     private static INPUT BuildKey(ushort vk, bool down)
     {
-        // スキャンコード主体: Raw Input / DirectInput 系は VK のみの合成入力を取りこぼすことがあり、
-        // 通常アプリはスキャン→VK 変換されるため両対応できる。
+        // Prefer scan codes: Raw Input / DirectInput can drop VK-only synthetic input, while normal apps
+        // map scan codes back to VK, so this covers both.
         var scan = PInvoke.MapVirtualKey(vk, MAP_VIRTUAL_KEY_TYPE.MAPVK_VK_TO_VSC_EX);
         var (wVk, wScan, flags) = scan != 0
             ? ((VIRTUAL_KEY)0,
                (ushort)(scan & 0xFF),
                KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE
                    | ((scan & 0xFF00) != 0 ? KEYBD_EVENT_FLAGS.KEYEVENTF_EXTENDEDKEY : 0))
-            : ((VIRTUAL_KEY)vk, (ushort)0, default(KEYBD_EVENT_FLAGS));   // スキャンコードを持たないキーは VK へフォールバック
+            : ((VIRTUAL_KEY)vk, (ushort)0, default(KEYBD_EVENT_FLAGS));   // Keys with no scan code fall back to VK.
 
         if (!down)
         {

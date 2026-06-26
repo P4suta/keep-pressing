@@ -17,7 +17,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 固定アクションヘッダー（最上部・スクロールしない。実行中も操作可） -->
+        <!-- Fixed action header: stays at the top, doesn't scroll, usable while running. -->
         <Border
             Grid.Row="0"
             Padding="24,12"
@@ -36,7 +36,7 @@
                     FontSize="16"
                     Style="{StaticResource AccentButtonStyle}" />
 
-                <!-- 開始/停止ホットキー：ボタンと直結する設定なのでヘッダーに常時表示（実行中は他設定同様グレーアウト） -->
+                <!-- Start/stop hotkey: tied to the button, so always shown in the header (greyed out while running). -->
                 <StackPanel
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -73,21 +73,21 @@
             </StackPanel>
         </Border>
 
-        <!-- スクロール設定 -->
+        <!-- Scrollable settings -->
         <ScrollViewer Grid.Row="1" Padding="24,16,24,24" VerticalScrollBarVisibility="Auto">
             <StackPanel
                 MaxWidth="640"
                 HorizontalAlignment="Stretch"
                 Spacing="16">
 
-                <!-- 設定ブロック（実行中は一括で無効化）。StackPanel は Control でないため ContentControl で包む -->
+                <!-- Settings block, disabled as a whole while running. Wrapped in a ContentControl since StackPanel isn't a Control. -->
                 <ContentControl
                     HorizontalContentAlignment="Stretch"
                     IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
                     IsTabStop="False">
                     <StackPanel Spacing="12">
 
-                        <!-- 対象（マウス / キーボード）をタブ切り替え -->
+                        <!-- Target tabs (mouse / keyboard) -->
                         <SelectorBar
                             x:Name="TargetSelector"
                             x:Uid="TargetSelector"
@@ -106,7 +106,7 @@
                             </SelectorBarItem>
                         </SelectorBar>
 
-                        <!-- マウス設定 -->
+                        <!-- Mouse settings -->
                         <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsMouseTarget, Mode=OneWay}">
                             <controls:SettingsExpander
                                 x:Uid="MouseSettings"
@@ -180,7 +180,7 @@
                             </InfoBar>
                         </StackPanel>
 
-                        <!-- キーボード設定 -->
+                        <!-- Keyboard settings -->
                         <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsKeyboardTarget, Mode=OneWay}">
                             <controls:SettingsCard x:Uid="KeyCard">
                                 <controls:SettingsCard.HeaderIcon>
@@ -209,7 +209,7 @@
                                 Visibility="{x:Bind ViewModel.IsKeyCaptureArmed, Mode=OneWay}" />
                         </StackPanel>
 
-                        <!-- 動作 -->
+                        <!-- Action -->
                         <controls:SettingsCard x:Uid="ActionCard">
                             <controls:SettingsCard.HeaderIcon>
                                 <FontIcon Glyph="&#xE8EE;" />

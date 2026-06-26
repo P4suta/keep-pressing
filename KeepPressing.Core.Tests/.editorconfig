@@ -1,5 +1,4 @@
-# テストプロジェクト固有の規約（ルート .editorconfig を継承して上書き）。
-# テストメソッド名はアンダースコア区切りの慣習（Method_Scenario_Expectation）を用いるため、
-# CA1707（識別子にアンダースコアを含めない）をこのプロジェクトでは無効化する。
+# Test project rules. Test method names use the Method_Scenario_Expectation convention, so disable CA1707
+# (no underscores in identifiers) here.
 [*.cs]
 dotnet_diagnostic.CA1707.severity = none

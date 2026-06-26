@@ -25,8 +25,8 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
-        // exe ディレクトリ基準の絶対パスで、起動時の作業ディレクトリに依存せずアイコンを解決する
-        // （ランチャー経由でも直接起動でも安定）。unpackaged では Assets を app/ に配備済み。
+        // Resolve the icon by an exe-relative absolute path, independent of the launch working directory
+        // (stable whether started via the launcher or directly). Unpackaged builds ship Assets under app/.
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
 
         // AppWindow.Resize takes physical pixels, so scale the DIP target by the

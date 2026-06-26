@@ -7,7 +7,7 @@ using KeepPressing.Presentation;
 
 namespace KeepPressing.App.Tests;
 
-/// <summary>登録/解除を記録し、Pressed を任意に発火できる <see cref="IHotkeyListener"/> の Fake。</summary>
+/// <summary>Fake <see cref="IHotkeyListener"/> recording register/unregister and raising Pressed on demand.</summary>
 internal sealed class FakeHotkeyListener : IHotkeyListener
 {
     public event Action<HotkeyId>? Pressed;
@@ -15,7 +15,7 @@ internal sealed class FakeHotkeyListener : IHotkeyListener
     public List<(HotkeyId Id, ushort Vk)> Registered { get; } = [];
     public List<HotkeyId> Unregistered { get; } = [];
 
-    /// <summary>登録を拒否する VK の集合（他アプリとの競合の模擬）。</summary>
+    /// <summary>VKs to reject registration for (simulates a conflict with another app).</summary>
     public HashSet<ushort> RejectVks { get; } = [];
 
     public Task<bool> RegisterAsync(HotkeyId id, HotkeyModifiers modifiers, ushort vk)
@@ -38,19 +38,19 @@ internal sealed class FakeHotkeyListener : IHotkeyListener
     public void Raise(HotkeyId id) => Pressed?.Invoke(id);
 }
 
-/// <summary>UI 搬送を同期実行する <see cref="IUiDispatcher"/> の Fake（テストでマーシャリングを単純化）。</summary>
+/// <summary>Fake <see cref="IUiDispatcher"/> running posted work synchronously.</summary>
 internal sealed class SynchronousUiDispatcher : IUiDispatcher
 {
     public void Post(Action action) => action();
 }
 
-/// <summary>カーソル位置を固定値で返す <see cref="ICursorLocator"/> の Fake。</summary>
+/// <summary>Fake <see cref="ICursorLocator"/> returning a fixed position.</summary>
 internal sealed class FakeCursorLocator : ICursorLocator
 {
     public ScreenPoint Current { get; set; }
 }
 
-/// <summary>送出を記録する <see cref="IInputSynthesizer"/> の Fake（VM が組み立てた spec の検証に使う）。</summary>
+/// <summary>Fake <see cref="IInputSynthesizer"/> recording sends, used to verify the spec the VM built.</summary>
 internal sealed class RecordingInputSynthesizer : IInputSynthesizer
 {
     public List<InputTarget> Taps { get; } = [];
@@ -62,7 +62,7 @@ internal sealed class RecordingInputSynthesizer : IInputSynthesizer
     public void Tap(InputTarget target) => Taps.Add(target);
 }
 
-/// <summary>キー（と引数）をそのまま返す <see cref="ILocalizer"/> の Fake（PRI 無しでテスト可能にする）。</summary>
+/// <summary>Fake <see cref="ILocalizer"/> echoing the key (and args), so tests run without PRI.</summary>
 internal sealed class FakeLocalizer : ILocalizer
 {
     public string GetString(string key) => key;
