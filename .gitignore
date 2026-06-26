@@ -53,3 +53,13 @@ _ReSharper*/
 # Generated files
 Generated\ Files/
 *_wpftmp.csproj
+
+# 署名鍵・証明書(誤コミット防止)。署名情報は release Environment の Secret で管理する
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+
+# SBOM 出力(リリース時に生成)
+sbom/
