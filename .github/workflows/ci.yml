@@ -54,6 +54,37 @@ jobs:
             Write-Error '脆弱な NuGet パッケージを検出しました'
           }
 
+  # 手元での動作確認用に self-contained ポータブルを発行して artifact 化する。
+  # build-test(品質ゲート)とは独立に並列実行し、ダウンロードを速くする。署名は付かない。
+  package:
+    name: package
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup toolchain (mise)
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
+
+      # release.yml の build ジョブと同一の self-contained 発行(dist/KeepPressing)。
+      - name: Publish portable (x64, self-contained)
+        run: just publish
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: keep-pressing-portable-x64
+          path: dist/KeepPressing
+          retention-days: 7
+          if-no-files-found: error
+
   # PR で導入される依存変更を審査し、moderate 以上の脆弱性やライセンス問題で落とす。
   dependency-review:
     name: dependency-review
