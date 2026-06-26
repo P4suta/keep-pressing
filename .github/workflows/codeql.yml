@@ -36,16 +36,23 @@ jobs:
             build-mode: none
             runner: ubuntu-latest
     steps:
+      # harden-runner は audit(可視化)で統一。Windows はフィルタが限定的で、CodeQL の通信先は
+      # バンドル取得など版依存で広いため block は誤検知/破綻しやすい。監査ログで egress を可視化する。
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       # C# は実ビルドして解析するため、CI と同一の mise(.NET 10 / just)を用意する。
       - name: Setup toolchain (mise)
         if: matrix.language == 'csharp'
-        uses: jdx/mise-action@v4
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -57,6 +64,6 @@ jobs:
         run: just build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3
         with:
           category: "/language:${{ matrix.language }}"

@@ -15,6 +15,10 @@ build:
 test:
     mise x -- dotnet test {{sln}}
 
+# NuGet 依存(推移的含む)の既知脆弱性を一覧。CI は出力を解析して脆弱性検出で失敗させる
+audit:
+    mise x -- dotnet list {{sln}} package --vulnerable --include-transitive
+
 # 一時生成物(bin/obj)を一掃
 clean:
     rm -rf KeepPressing/bin KeepPressing/obj \

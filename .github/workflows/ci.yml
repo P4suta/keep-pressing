@@ -17,13 +17,21 @@ jobs:
   build-test:
     name: build-test
     runs-on: windows-latest
+    permissions:
+      contents: read
     steps:
+      # harden-runner: Windows ランナーでは egress フィルタが限定的なため audit(可視化のみ)。
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       # mise.toml に固定した .NET SDK / just をそのまま CI でも使い、ローカルと同一のツールチェーンにする。
       - name: Setup toolchain (mise)
-        uses: jdx/mise-action@v4
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
       # Debug ビルド。Directory.Build.props で Debug は TreatWarningsAsErrors=true のため、
       # アナライザ/コードスタイル警告がそのまま CI の品質ゲートになる。
@@ -32,3 +40,43 @@ jobs:
 
       - name: Test
         run: just test
+
+      # 既知脆弱性を含む NuGet 依存(推移的含む)が紛れ込んだら CI を落とす。
+      # dotnet list は脆弱性検出でも exit 0 のため、出力を解析して明示的に失敗させる。
+      - name: Audit dependencies (NuGet)
+        shell: pwsh
+        env:
+          DOTNET_CLI_UI_LANGUAGE: en   # 出力を英語に固定し、ロケール非依存で解析する
+        run: |
+          $log = just audit 2>&1 | Out-String
+          Write-Host $log
+          if ($log -match 'has the following vulnerable packages') {
+            Write-Error '脆弱な NuGet パッケージを検出しました'
+          }
+
+  # PR で導入される依存変更を審査し、moderate 以上の脆弱性やライセンス問題で落とす。
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # Ubuntu では egress を block で厳格化。checkout / dependency-review が使う GitHub API のみ許可。
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            api.github.com:443
+
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure
