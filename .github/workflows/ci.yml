@@ -27,7 +27,7 @@ jobs:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       # mise.toml に固定した .NET SDK / just をそのまま CI でも使い、ローカルと同一のツールチェーンにする。
       - name: Setup toolchain (mise)
@@ -73,7 +73,7 @@ jobs:
             api.github.com:443
 
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Dependency review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
