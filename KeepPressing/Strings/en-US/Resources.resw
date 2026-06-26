@@ -13,7 +13,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
-  <!-- ===== 動的文字列（コードから ILocalizer 経由で取得。{n} は string.Format の引数）===== -->
+  <!-- ===== Dynamic strings (fetched from code via ILocalizer; {n} are string.Format args) ===== -->
   <data name="Status_Idle" xml:space="preserve">
     <value>Stopped</value>
   </data>
@@ -84,7 +84,7 @@
     <value>Stopped because an error occurred while sending input: {0}</value>
   </data>
 
-  <!-- ===== 静的 XAML（x:Uid 経由。識別子.プロパティ。添付プロパティは [using:...] 構文）===== -->
+  <!-- ===== Static XAML (via x:Uid; Identifier.Property; attached properties use [using:...] syntax) ===== -->
   <data name="HotkeyLabel.Text" xml:space="preserve">
     <value>Start/Stop hotkey</value>
   </data>

@@ -1,30 +1,30 @@
-name: バグ報告
-description: 不具合の報告
+name: Bug report
+description: Report a defect
 labels: [bug]
 body:
   - type: textarea
     id: symptom
     attributes:
-      label: 症状
-      description: 何が起きたか / 期待した動作
+      label: Symptom
+      description: What happened / what you expected
     validations:
       required: true
   - type: textarea
     id: repro
     attributes:
-      label: 再現手順
+      label: Steps to reproduce
       placeholder: |
         1. ...
         2. ...
   - type: input
     id: version
     attributes:
-      label: バージョン / OS
+      label: Version / OS
       placeholder: "v1.0.0 / Windows 11 23H2 x64"
     validations:
       required: true
   - type: textarea
     id: crash
     attributes:
-      label: クラッシュ情報（任意）
-      description: 起動しない/落ちる場合、`%LOCALAPPDATA%\CrashDumps` の該当 .dmp 名や時刻があれば
+      label: Crash info (optional)
+      description: If it won't start or crashes, the relevant .dmp name/time under `%LOCALAPPDATA%\CrashDumps`, if any

@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      # harden-runner: Windows ランナーでは egress フィルタが限定的なため audit(可視化のみ)。
+      # harden-runner: audit only, since egress filtering is limited on Windows runners.
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
@@ -29,33 +29,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      # mise.toml に固定した .NET SDK / just をそのまま CI でも使い、ローカルと同一のツールチェーンにする。
+      # Use the .NET SDK / just pinned in mise.toml, matching the local toolchain.
       - name: Setup toolchain (mise)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
-      # Debug ビルド。Directory.Build.props で Debug は TreatWarningsAsErrors=true のため、
-      # アナライザ/コードスタイル警告がそのまま CI の品質ゲートになる。
+      # Debug build: Directory.Build.props sets TreatWarningsAsErrors=true for Debug, so analyzer/style
+      # warnings act as the CI quality gate.
       - name: Build (Debug, warnings as errors)
         run: just build
 
       - name: Test
         run: just test
 
-      # 既知脆弱性を含む NuGet 依存(推移的含む)が紛れ込んだら CI を落とす。
-      # dotnet list は脆弱性検出でも exit 0 のため、出力を解析して明示的に失敗させる。
+      # Fail CI if any NuGet dependency (including transitive) has a known vulnerability.
+      # dotnet list exits 0 even on detection, so parse the output and fail explicitly.
       - name: Audit dependencies (NuGet)
         shell: pwsh
         env:
-          DOTNET_CLI_UI_LANGUAGE: en   # 出力を英語に固定し、ロケール非依存で解析する
+          DOTNET_CLI_UI_LANGUAGE: en   # Pin output to English for locale-independent parsing.
         run: |
           $log = just audit 2>&1 | Out-String
           Write-Host $log
           if ($log -match 'has the following vulnerable packages') {
-            Write-Error '脆弱な NuGet パッケージを検出しました'
+            Write-Error 'Vulnerable NuGet packages detected'
           }
 
-  # 手元での動作確認用に self-contained ポータブルを発行して artifact 化する。
-  # build-test(品質ゲート)とは独立に並列実行し、ダウンロードを速くする。署名は付かない。
+  # Publish a self-contained portable build as an artifact for manual testing. Runs independently of
+  # build-test (the quality gate); unsigned.
   package:
     name: package
     runs-on: windows-latest
@@ -73,7 +73,7 @@ jobs:
       - name: Setup toolchain (mise)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
-      # release.yml の build ジョブと同一の self-contained 発行(dist/KeepPressing)。
+      # Same self-contained publish as release.yml's build job (dist/KeepPressing).
       - name: Publish portable (x64, self-contained)
         run: just publish
 
@@ -85,7 +85,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # PR で導入される依存変更を審査し、moderate 以上の脆弱性やライセンス問題で落とす。
+  # Review dependency changes introduced by a PR; fail on moderate+ vulnerabilities or license issues.
   dependency-review:
     name: dependency-review
     if: github.event_name == 'pull_request'
@@ -94,7 +94,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      # Ubuntu では egress を block で厳格化。checkout / dependency-review が使う GitHub API のみ許可。
+      # On Ubuntu, harden egress with block, allowing only the GitHub API used by checkout / dependency-review.
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:

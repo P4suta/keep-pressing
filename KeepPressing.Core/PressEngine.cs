@@ -2,14 +2,12 @@ using System.Diagnostics;
 
 namespace KeepPressing.Core;
 
-/// <summary>
-/// 連打/長押しエンジン。<see cref="EngineState.Idle"/> / <see cref="EngineState.Running"/> の 2 状態機械。
-/// </summary>
+/// <summary>Idle/Running state machine driving repeat and hold input.</summary>
 /// <remarks>
-/// スレッド契約: <see cref="Start"/> / <see cref="StopAsync"/> / <see cref="DisposeAsync"/> / <see cref="State"/>
-/// は単一スレッド（実運用では UI スレッド）から呼ぶこと。エンジンはロックを持たない。
-/// <see cref="StateChanged"/> / <see cref="Faulted"/> は任意のスレッドで発火しうる
-/// （Core は ConfigureAwait(false) を徹底するため）— 購読側が UI スレッドへマーシャリングする。
+/// Threading: <see cref="Start"/> / <see cref="StopAsync"/> / <see cref="DisposeAsync"/> / <see cref="State"/>
+/// must be called from a single thread (the UI thread in practice); the engine holds no locks.
+/// <see cref="StateChanged"/> / <see cref="Faulted"/> may fire on any thread (Core uses ConfigureAwait(false)
+/// throughout), so subscribers marshal to the UI thread.
 /// </remarks>
 public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider timeProvider) : IAsyncDisposable
 {
@@ -21,12 +19,12 @@ public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider time
 
     public EngineState State { get; private set; } = EngineState.Idle.Instance;
 
-    /// <summary>状態遷移の通知。遷移は <see cref="Start"/> / <see cref="StopAsync"/> の中でのみ起きる。</summary>
+    /// <summary>State transitions, raised only inside <see cref="Start"/> / <see cref="StopAsync"/>.</summary>
     public event Action<EngineState>? StateChanged;
 
     /// <summary>
-    /// ループが合成例外などで自然死したことの通知。Up は各モードの finally で送出済み。
-    /// 状態遷移は行わない — 遷移の所有権は <see cref="StopAsync"/> にあり、購読側がそれを呼んで Idle へ戻す。
+    /// The loop died on its own (e.g. a synthesizer exception); Up was already sent in each mode's finally.
+    /// Does not transition state — <see cref="StopAsync"/> owns transitions, and a subscriber calls it to return to Idle.
     /// </summary>
     public event Action<Exception>? Faulted;
 
@@ -34,15 +32,15 @@ public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider time
     {
         if (State is EngineState.Running)
         {
-            throw new InvalidOperationException("エンジンは既に実行中。");
+            throw new InvalidOperationException("Engine is already running.");
         }
 
         _cts = new CancellationTokenSource();
-        Transition(new EngineState.Running(spec));   // 副作用より先に観測可能化（呼び出しスレッド上）
-        _loop = RunAsync(spec, _cts.Token);          // 最初の打鍵は最初の await まで同期実行される（即応性）
+        Transition(new EngineState.Running(spec));   // Observable before any side effect, on the calling thread.
+        _loop = RunAsync(spec, _cts.Token);          // The first press runs synchronously up to the first await.
     }
 
-    /// <summary>停止する。完了時点で長押しの Up 送出まで済んでいることを API 契約として保証する。</summary>
+    /// <summary>Stops. On completion, a held Up is guaranteed to have been sent (API contract).</summary>
     public async Task StopAsync()
     {
         if (State is not EngineState.Running)
@@ -51,7 +49,7 @@ public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider time
         }
 
         await _cts!.CancelAsync().ConfigureAwait(false);
-        await _loop!.ConfigureAwait(false);          // finally の Release 完了まで待つ ＝ Up 保証の要
+        await _loop!.ConfigureAwait(false);          // Await the finally's Release — this is what guarantees Up.
         _cts.Dispose();
         (_cts, _loop) = (null, null);
         Transition(EngineState.Idle.Instance);
@@ -73,12 +71,12 @@ public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider time
             {
                 PressMode.Repeat repeat => RepeatAsync(spec.Target, repeat.Interval, ct),
                 PressMode.Hold => HoldAsync(spec.Target, ct),
-                _ => throw new UnreachableException(), // private ctor で閉じた階層 → 到達不能
+                _ => throw new UnreachableException(),
             }).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            // 正常停止。
+            // Normal stop.
         }
         catch (Exception ex)
         {
@@ -91,7 +89,7 @@ public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider time
         using var timer = new PeriodicTimer(interval, _timeProvider);
         do
         {
-            _synthesizer.Tap(target);                // do-while: 開始直後に 1 打目を即時送出
+            _synthesizer.Tap(target);                // do-while: fire the first tap immediately on start.
         }
         while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false));
     }
@@ -105,7 +103,7 @@ public sealed class PressEngine(IInputSynthesizer synthesizer, TimeProvider time
         }
         finally
         {
-            _synthesizer.Release(target);            // キャンセル・例外いずれでも必ず Up
+            _synthesizer.Release(target);            // Always Up, on cancellation or exception.
         }
     }
 }

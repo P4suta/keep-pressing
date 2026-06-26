@@ -7,10 +7,7 @@ using Microsoft.UI.Xaml;
 
 namespace KeepPressing;
 
-/// <summary>
-/// アプリケーションのライフサイクルと合成ルート。
-/// DI コンテナ（<see cref="Services"/>）がサービスの生成と破棄を所有する。
-/// </summary>
+/// <summary>App lifecycle and composition root. The DI container (<see cref="Services"/>) owns service creation and disposal.</summary>
 public partial class App : Application
 {
     private readonly WindowHandleProvider _windowHandle = new();
@@ -19,23 +16,23 @@ public partial class App : Application
 
     public App()
     {
-        // タスクバーのピン留め/グルーピングを安定させる明示的 AUMID（unpackaged 既定の自動 AUMID 回避）。
-        // 最初のウィンドウ表示前＝UI 生成前に設定する必要があるためコンストラクタ先頭で呼ぶ。
+        // Explicit AUMID for stable taskbar pinning/grouping (avoids the auto AUMID of unpackaged apps).
+        // Must be set before the first window, i.e. before any UI, hence at the top of the constructor.
         _ = Windows.Win32.PInvoke.SetCurrentProcessExplicitAppUserModelID("P4suta.KeepPressing");
         InitializeComponent();
     }
 
     /// <summary>
-    /// 合成ルートの <see cref="IServiceProvider"/>。WinUI の <see cref="Page"/> は引数なし
-    /// コンストラクタで生成され ViewModel を直接注入できないため、Page はこのプロパティ
-    /// （Composition Root への単一のアクセス点）から自身の ViewModel を解決する。
+    /// The composition root's <see cref="IServiceProvider"/>. WinUI <see cref="Page"/>s are created via a
+    /// parameterless constructor and cannot take injected dependencies, so a page resolves its own ViewModel
+    /// from this single access point.
     /// </summary>
     public IServiceProvider Services => _serviceProvider;
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        // DispatcherQueue は UI スレッドで取得した値をインスタンス登録する
-        // （ファクトリ遅延解決は別スレッドのキューを掴む危険があるため）。
+        // Register the DispatcherQueue captured on the UI thread as an instance (lazy factory resolution
+        // could grab another thread's queue).
         var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
         _serviceProvider = new ServiceCollection()
@@ -44,9 +41,9 @@ public partial class App : Application
             .AddKeepPressing()
             .BuildServiceProvider();
 
-        // 最終安全網: 未処理例外でも長押しの Up を送出してから落ちる。
-        // Core は ConfigureAwait(false) を徹底している（CA2007=error）ため、
-        // この同期待機はスレッドプール上の継続を待つだけでデッドロックしない。
+        // Last-resort safety net: send a held Up even on an unhandled exception before going down. Core
+        // enforces ConfigureAwait(false) (CA2007=error), so this synchronous wait only awaits a thread-pool
+        // continuation and cannot deadlock.
         UnhandledException += (_, _) =>
         {
             try
@@ -55,12 +52,12 @@ public partial class App : Application
             }
             catch
             {
-                // 終了経路 — これ以上できることはない。
+                // Shutdown path — nothing more we can do.
             }
         };
 
         var window = new MainWindow();
-        _windowHandle.Attach(window);   // HWND は Window 生成後に供給する（IImeGuard 等が参照）。
+        _windowHandle.Attach(window);   // Supply the HWND after the window exists (used by IImeGuard, etc.).
         window.Closed += OnWindowClosed;
         window.Activate();
     }
@@ -69,11 +66,11 @@ public partial class App : Application
     {
         if (_shutdownComplete)
         {
-            return;   // 2 回目はそのまま閉じる。
+            return;   // Second pass: just close.
         }
 
-        // 非同期クローズ: UI スレッドを塞がずに DI 所有の Disposable を一括破棄する。
-        // ServiceProvider は登録の逆順で破棄し、PressEngine.DisposeAsync が長押しの Up 送出完了まで待つ。
+        // Async close: dispose DI-owned disposables without blocking the UI thread. The ServiceProvider
+        // disposes in reverse registration order, and PressEngine.DisposeAsync awaits the held Up.
         e.Handled = true;
         await ((IAsyncDisposable)_serviceProvider).DisposeAsync();
         _shutdownComplete = true;

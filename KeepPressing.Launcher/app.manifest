@@ -5,7 +5,7 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
-        <!-- 昇格不要。本体は asInvoker で動くため、ランチャーも昇格を要求しない。 -->
+        <!-- No elevation: the app runs as asInvoker, so the launcher requests none either. -->
         <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>

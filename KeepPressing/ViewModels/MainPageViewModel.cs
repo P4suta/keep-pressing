@@ -12,10 +12,9 @@ using VirtualKey = Windows.System.VirtualKey;
 namespace KeepPressing.ViewModels;
 
 /// <summary>
-/// メイン画面の ViewModel。
-/// マーシャリング規律: Interop/Core から飛んでくるイベント（ホットキー、StateChanged、Faulted）は
-/// すべてここで <see cref="IUiDispatcher.Post(System.Action)"/> により UI スレッドへ搬送する。
-/// エンジンの Start/StopAsync は UI スレッドからのみ呼ぶ（PressEngine のスレッド契約）。
+/// Main page ViewModel. Marshaling rule: every event from Interop/Core (hotkeys, StateChanged, Faulted) is
+/// posted to the UI thread here via <see cref="IUiDispatcher.Post(System.Action)"/>. The engine's
+/// Start/StopAsync are called only from the UI thread (PressEngine's threading contract).
 /// </summary>
 public sealed partial class MainPageViewModel : ObservableObject
 {
@@ -35,8 +34,8 @@ public sealed partial class MainPageViewModel : ObservableObject
         _dispatcher = dispatcher;
         _loc = loc;
 
-        // 選択肢の表示名は言語依存のため、初期化子ではなく ctor で loc から構築する
-        // （HotkeyChoices は "F5" 等の言語非依存記号なので初期化子のまま）。
+        // Choice display names are language-dependent, so build them from loc in the ctor rather than an
+        // initializer (HotkeyChoices stays an initializer — "F5" etc. are language-independent symbols).
         MouseButtons =
         [
             new(MouseButton.Left, loc.GetString("Mouse_Left")),
@@ -56,8 +55,8 @@ public sealed partial class MainPageViewModel : ObservableObject
         LivePositionText = "";
         StatusText = loc.GetString("Status_Idle");
 
-        // 初期選択を _lastHotkey と一致させることで、setter が走らせる OnSelectedHotkeyChanged を no-op にし、
-        // 登録経路を下の明示呼び出し 1 本に統一する（値ベースの再入制御。フラグを持たない）。
+        // Matching the initial selection to _lastHotkey makes the setter's OnSelectedHotkeyChanged a no-op,
+        // funneling registration through the single explicit call below (value-based reentrancy, no flag).
         SelectedHotkey = _lastHotkey = HotkeyChoices[1];   // F6
 
         _hotkeys.Pressed += id => _dispatcher.Post(() => OnHotkey(id));
@@ -68,10 +67,10 @@ public sealed partial class MainPageViewModel : ObservableObject
             ErrorMessage = _loc.Format("Error_Faulted", ex.Message);
         });
 
-        _ = ChangeHotkeyAsync(SelectedHotkey);   // 初期ホットキー登録（変更時と同一経路）
+        _ = ChangeHotkeyAsync(SelectedHotkey);   // Initial hotkey registration (same path as on change).
     }
 
-    // ---- 選択肢（単一の真実の源。XAML は ItemsSource でバインドし、項目の並びを XAML に重複させない）----
+    // ---- Choices (single source of truth; XAML binds via ItemsSource) ----
 
     public IReadOnlyList<Choice<MouseButton>> MouseButtons { get; }
 
@@ -86,7 +85,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         new(VirtualKey.F10, "F10"),
     ];
 
-    // ---- 設定状態 -------------------------------------------------------
+    // ---- Configuration state --------------------------------------------
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsMouseTarget), nameof(IsKeyboardTarget))]
@@ -123,7 +122,7 @@ public sealed partial class MainPageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ToggleButtonLabel))]
     public partial HotkeyChoice SelectedHotkey { get; set; }
 
-    // ---- 実行状態 -------------------------------------------------------
+    // ---- Run state ------------------------------------------------------
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotRunning), nameof(ToggleButtonLabel))]
@@ -144,7 +143,7 @@ public sealed partial class MainPageViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasError))]
     public partial string? ErrorMessage { get; set; }
 
-    // ---- 導出プロパティ -------------------------------------------------
+    // ---- Derived properties ---------------------------------------------
 
     public bool IsMouseTarget => SelectedTarget is TargetKind.Mouse;
     public bool IsKeyboardTarget => SelectedTarget is TargetKind.Keyboard;
@@ -156,7 +155,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         : _loc.Format("Toggle_Start", SelectedHotkey.DisplayKey);
     public string CpsText => _loc.Format("Cps_Format", (long)Math.Round(1000 / Math.Max(IntervalMs, 1)));
 
-    // ---- 開始 / 停止 ----------------------------------------------------
+    // ---- Start / stop ---------------------------------------------------
 
     private bool CanToggle => !IsCapturingPosition && (IsRunning || IsMouseTarget || _capturedKey is not null);
 
@@ -179,7 +178,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         _engine.Start(spec);
     }
 
-    /// <summary>UI 状態 → ドメイン型（ADT）への翻訳。純粋関数 <see cref="SpecBuilder"/> へ委譲する。</summary>
+    /// <summary>Translates UI state to the domain type via the pure <see cref="SpecBuilder"/>.</summary>
     private bool TryBuildSpec(out PressSpec spec, out string? error)
     {
         var config = new PressConfiguration(
@@ -200,9 +199,9 @@ public sealed partial class MainPageViewModel : ObservableObject
         var describe = SpecDescriber.Describe(state, KeyDisplay, _loc);
         StatusText = IsRunning ? _loc.Format("Status_EmergencyHint", describe) : describe;
 
-        // 緊急脱出: 実行中だけ Esc を全体登録する。連打中は対象ウィンドウにフォーカスが奪われ
-        // 設定したホットキーも忘れがちなので、誰でも知っている Esc を停止専用キーにする。
-        // （Esc は座標キャプチャでも使うが、実行中はキャプチャ不可なので競合しない）
+        // Emergency exit: register Esc globally only while running. During a run the target window holds
+        // focus and the configured hotkey is easy to forget, so the universally known Esc becomes a
+        // stop-only key. (Esc is also used for position capture, but capture is impossible while running.)
         if (IsRunning)
         {
             _ = _hotkeys.RegisterAsync(HotkeyId.EmergencyStop, HotkeyModifiers.None, (ushort)VirtualKey.Escape);
@@ -213,7 +212,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         }
     }
 
-    // ---- グローバルホットキー --------------------------------------------
+    // ---- Global hotkeys -------------------------------------------------
 
     private void OnHotkey(HotkeyId id)
     {
@@ -223,7 +222,7 @@ public sealed partial class MainPageViewModel : ObservableObject
                 ToggleCommand.Execute(null);
                 break;
             case HotkeyId.CaptureConfirm:
-                // F8 押下「時点」のカーソル位置を確定値にする（50ms ポーリングの遅延に影響されない）。
+                // Use the cursor position at the moment F8 is pressed (unaffected by the 50ms polling lag).
                 _captureResult?.TrySetResult(_cursor.Current);
                 break;
             case HotkeyId.CaptureCancel:
@@ -234,7 +233,8 @@ public sealed partial class MainPageViewModel : ObservableObject
 
                 break;
 
-            // 緊急停止は「止める」だけ。実行中以外では何もしない（登録解除との競合で誤って開始しないよう守る）。
+            // Emergency stop only stops; it does nothing unless running (guards against a race with
+            // unregistration accidentally starting).
             case HotkeyId.EmergencyStop when _engine.State is EngineState.Running && ToggleCommand.CanExecute(null):
                 ToggleCommand.Execute(null);
                 break;
@@ -243,7 +243,7 @@ public sealed partial class MainPageViewModel : ObservableObject
 
     partial void OnSelectedHotkeyChanged(HotkeyChoice value)
     {
-        // 巻き戻し代入（value == _lastHotkey）は登録を起こさない。再入を値で判定するためフラグが不要になる。
+        // A revert assignment (value == _lastHotkey) triggers no registration; value-based reentrancy needs no flag.
         if (value != _lastHotkey)
         {
             _ = ChangeHotkeyAsync(value);
@@ -260,13 +260,13 @@ public sealed partial class MainPageViewModel : ObservableObject
             return;
         }
 
-        // 競合: 直前のキーへ巻き戻して再登録する。
+        // Conflict: revert to the previous key and re-register it.
         ErrorMessage = _loc.Format("Error_HotkeyConflict", choice.DisplayKey);
         SelectedHotkey = _lastHotkey;
         await _hotkeys.RegisterAsync(HotkeyId.Toggle, HotkeyModifiers.None, (ushort)_lastHotkey.Vk);
     }
 
-    // ---- 座標キャプチャ ---------------------------------------------------
+    // ---- Position capture -----------------------------------------------
 
     [RelayCommand(IncludeCancelCommand = true)]
     private async Task CapturePositionAsync(CancellationToken ct)
@@ -286,7 +286,7 @@ public sealed partial class MainPageViewModel : ObservableObject
 
         _captureResult = new(TaskCreationOptions.RunContinuationsAsynchronously);
         RefreshLivePosition();
-        IsCapturingPosition = true;   // ← view がこれを合図に描画フレームごとの RefreshLivePosition 呼び出しを開始する
+        IsCapturingPosition = true;   // Signals the view to start per-frame RefreshLivePosition calls.
         ErrorMessage = null;
         try
         {
@@ -296,7 +296,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            // Esc またはキャンセルボタンによる中断。
+            // Aborted by Esc or the cancel button.
         }
         finally
         {
@@ -308,18 +308,18 @@ public sealed partial class MainPageViewModel : ObservableObject
     }
 
     /// <summary>
-    /// ライブ座標表示の更新。キャプチャ中、view が描画フレームごと（CompositionTarget.Rendering）に呼ぶ。
-    /// タイマーポーリング（分解能 ~16ms に丸められ表示がカクつく）ではなくフレーム同期にすることで滑らかに追従する。
+    /// Updates the live coordinate display. During capture the view calls this every render frame
+    /// (CompositionTarget.Rendering); frame sync tracks the cursor more smoothly than timer polling.
     /// </summary>
     public void RefreshLivePosition()
     {
         var p = _cursor.Current;
-        LivePositionText = $"({p.X}, {p.Y})";   // 同値なら SetProperty が通知を抑制する
+        LivePositionText = $"({p.X}, {p.Y})";   // SetProperty suppresses the notification when unchanged.
     }
 
-    // ---- キー設定 ---------------------------------------------------------
+    // ---- Key capture ----------------------------------------------------
 
-    /// <summary>MainPage の PreviewKeyDown から呼ばれる（キー設定モード中のみ）。</summary>
+    /// <summary>Called from MainPage's PreviewKeyDown (only during key-capture mode).</summary>
     public void OnKeyCaptured(ushort vk, string displayName)
     {
         _capturedKey = new KeyCode(vk);

@@ -7,9 +7,8 @@ internal enum InputAction
 }
 
 /// <summary>
-/// テスト用の入力合成 Fake。Press/Release を順序付きで記録する。
-/// Tap は DIM と同じ意味論（Press → Release）で実装し、対の検証を自然に書けるようにしつつ、
-/// <see cref="ThrowOnTap"/> による故障注入を可能にする。
+/// Test fake recording Press/Release in order. Tap is implemented as Press then Release so paired
+/// assertions read naturally, while <see cref="ThrowOnTap"/> allows fault injection.
 /// </summary>
 internal sealed class FakeInputSynthesizer : IInputSynthesizer
 {
@@ -45,9 +44,9 @@ internal sealed class FakeInputSynthesizer : IInputSynthesizer
     }
 
     /// <summary>
-    /// ログ件数が <paramref name="count"/> に達するまで待つ。
-    /// FakeTimeProvider.Advance() 後のタイマー継続はスレッドプールで非同期に走るため、
-    /// Advance 直後の同期アサートではなく必ずこれで到達を待つこと。
+    /// Waits until the log reaches <paramref name="count"/> entries. Timer continuations after
+    /// FakeTimeProvider.Advance() run asynchronously on the thread pool, so wait with this rather than
+    /// asserting synchronously right after Advance.
     /// </summary>
     public async Task WaitForCountAsync(int count, TimeSpan? timeout = null)
     {
@@ -64,7 +63,7 @@ internal sealed class FakeInputSynthesizer : IInputSynthesizer
 
             if (DateTime.UtcNow > deadline)
             {
-                throw new TimeoutException($"ログ件数が {count} に達しなかった（現在 {Log.Count} 件）。");
+                throw new TimeoutException($"Log did not reach {count} entries (currently {Log.Count}).");
             }
 
             await Task.Delay(5);

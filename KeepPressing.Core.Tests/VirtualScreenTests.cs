@@ -3,9 +3,9 @@ namespace KeepPressing.Core.Tests;
 public sealed class VirtualScreenTests
 {
     [Theory]
-    [InlineData(-1920, 0)]      // 仮想スクリーン左端 → 0
-    [InlineData(0, 32768)]      // プライマリ原点（中央）→ 32768
-    [InlineData(1919, 65518)]   // 右端ピクセル → 65535 未満
+    [InlineData(-1920, 0)]      // Virtual screen left edge -> 0
+    [InlineData(0, 32768)]      // Primary origin (center) -> 32768
+    [InlineData(1919, 65518)]   // Rightmost pixel -> below 65535
     public void Normalize_HandlesNegativeOrigin(int x, int expectedNx)
     {
         var r = new VirtualScreenRect(-1920, 0, 3840, 1080);
@@ -44,8 +44,8 @@ public sealed class VirtualScreenTests
 
         var (nx, ny) = VirtualScreen.Normalize(new ScreenPoint(1, 2), r);
 
-        Assert.Equal(21845, nx);   // 65536 / 3 = 21845.33… → 切り捨て
-        Assert.Equal(43690, ny);   // 131072 / 3 = 43690.67… → 切り捨て
+        Assert.Equal(21845, nx);   // 65536 / 3 = 21845.33… truncated
+        Assert.Equal(43690, ny);   // 131072 / 3 = 43690.67… truncated
     }
 
     [Fact]

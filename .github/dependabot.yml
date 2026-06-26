@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # NuGet 依存(WindowsAppSDK / CommunityToolkit / CsWin32 / xunit など)
+  # NuGet dependencies (WindowsAppSDK / CommunityToolkit / CsWin32 / xunit, etc.)
   - package-ecosystem: nuget
     directory: "/"
     schedule:
@@ -9,7 +9,7 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  # GitHub Actions(checkout / mise-action / action-gh-release)
+  # GitHub Actions (checkout / mise-action / action-gh-release)
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

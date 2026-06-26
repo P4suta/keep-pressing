@@ -7,9 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace KeepPressing.Composition;
 
 /// <summary>
-/// DI コンテナへのサービス登録の単一点（合成ルート）。
-/// 入力合成・ホットキー・カーソル取得・エンジンはいずれもプロセス内で 1 つの状態（専用スレッドや
-/// 実行中の連打ループ）を所有するため Singleton で登録する。
+/// Single registration point (composition root). Input synthesis, hotkeys, the cursor locator, and the
+/// engine each own one piece of process-wide state (a dedicated thread or the running loop), so they are
+/// registered as singletons.
 /// </summary>
 internal static class ServiceCollectionExtensions
 {

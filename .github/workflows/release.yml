@@ -1,34 +1,34 @@
 name: Release
 
-# v* タグ push で本番リリース。手動 dispatch(publish=false) は build→sign→verify のみ走る
-# Dry-run(署名スモークテスト)。署名鍵が触れる面を最小化するため build / sign / publish を
-# 分離し、署名 Secret は release Environment(承認ゲート)にのみ存在する。
+# Production release on v* tag push. Manual dispatch (publish=false) runs build->sign->verify only
+# (a signing smoke test / dry-run). build / sign / publish are split to minimize exposure of signing keys,
+# which live only in the release Environment (an approval gate).
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'タグ名 (例 v1.2.3)'
+        description: 'Tag name (e.g. v1.2.3)'
         required: true
         type: string
       publish:
-        description: '実際に GitHub Release を作成する (off = Dry-run)'
+        description: 'Actually create a GitHub Release (off = dry-run)'
         required: false
         type: boolean
         default: false
 
-# 既定は読み取りのみ。各ジョブで必要最小限だけ昇格する。
+# Read-only by default; each job elevates only what it needs.
 permissions:
   contents: read
 
-# 署名・公開の途中でキャンセルされないようにする(同一 ref のリリースは直列化)。
+# Don't cancel mid sign/publish (serialize releases for the same ref).
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # 配布物と SBOM を生成するだけ。Secret には一切触れない。
+  # Build the distributable and SBOM only. Touches no secrets.
   build:
     runs-on: windows-latest
     permissions:
@@ -36,7 +36,7 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
-      # harden-runner: Windows ランナーでは egress フィルタが限定的なため audit(可視化のみ)。
+      # harden-runner: audit only, since egress filtering is limited on Windows runners.
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
@@ -48,7 +48,7 @@ jobs:
       - name: Setup toolchain (mise)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
-      # タグ push なら github.ref_name、手動なら inputs.tag_name。先頭 v を除去。
+      # github.ref_name on tag push, inputs.tag_name on manual; strip the leading v.
       - name: Resolve version
         id: ver
         shell: bash
@@ -58,11 +58,11 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "resolved version: $version"
 
-      # csproj の TrimPortableDistribution が発行後に MUI/pdb/未使用 DLL を剪定 → dist/KeepPressing。
+      # csproj's TrimPortableDistribution prunes MUI/pdb/unused DLLs after publish -> dist/KeepPressing.
       - name: Publish portable (x64, self-contained)
         run: just publish
 
-      # 出荷する依存の供給網を CycloneDX(JSON)で記録。後段で attestation を付ける。
+      # Record the shipped dependency supply chain as CycloneDX (JSON); attested later.
       - name: Generate SBOM (CycloneDX)
         shell: bash
         run: |
@@ -87,8 +87,8 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  # first-party バイナリのみ Authenticode 署名する。署名 Secret は release Environment に隔離。
-  # Secret 未設定なら警告のみで未署名のまま続行(非ブロッキング)。
+  # Authenticode-sign first-party binaries only. Signing secrets are isolated in the release Environment;
+  # if unset, warn and continue unsigned (non-blocking).
   sign:
     needs: build
     runs-on: windows-latest
@@ -107,8 +107,8 @@ jobs:
           name: portable
           path: dist/KeepPressing
 
-      # 署名対象は自作アセンブリのみ。Microsoft 署名済みのランタイム/WinAppSDK は再署名しない。
-      # Secret の有無をここで判定し、後続の署名ステップを制御する。
+      # Sign own assemblies only; don't re-sign Microsoft-signed runtime/WinAppSDK. Detect secret presence
+      # here to gate the signing steps that follow.
       - name: Gate signing
         id: gate
         shell: bash
@@ -117,14 +117,14 @@ jobs:
         run: |
           if [ -n "$ES_USERNAME" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "署名 Secret を検出: 署名を実施します"
+            echo "Signing secret detected: signing will run"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Unsigned release::署名 Secret(ES_USERNAME 等)未設定のため未署名で続行します"
+            echo "::warning title=Unsigned release::Signing secret (ES_USERNAME etc.) not set; continuing unsigned"
           fi
 
-      # esigner-codesign は 1 ファイル単位。自作 4 ファイル(ルートのランチャー + app/ の本体3つ)を順に署名する。
-      # ルートの KeepPressing.exe は end-user が実行する起動ランチャーなので署名対象に含める。
+      # esigner-codesign works one file at a time. Sign the 4 own files (root launcher + 3 in app/) in turn.
+      # The root KeepPressing.exe is the launcher end users run, so it's included.
       - name: Sign KeepPressing.exe (launcher, root)
         if: steps.gate.outputs.enabled == 'true'
         uses: SSLcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b # v1.3.2
@@ -181,7 +181,7 @@ jobs:
           malware_block: false
           environment_name: PROD
 
-      # 署名チェーン・RFC3161 タイムスタンプ・署名者 CN を厳格検証(署名時のみ)。
+      # Strictly verify the signature chain, RFC3161 timestamp, and signer CN (only when signing ran).
       - name: Verify signatures
         if: steps.gate.outputs.enabled == 'true'
         shell: pwsh
@@ -198,18 +198,18 @@ jobs:
             Sort-Object FullName -Descending | Select-Object -First 1
           foreach ($f in $files) {
             $sig = Get-AuthenticodeSignature -FilePath $f
-            if ($sig.Status -ne 'Valid') { throw "署名が無効: $f -> $($sig.Status) $($sig.StatusMessage)" }
-            if ($null -eq $sig.TimeStamperCertificate) { throw "タイムスタンプ無し: $f" }
+            if ($sig.Status -ne 'Valid') { throw "Invalid signature: $f -> $($sig.Status) $($sig.StatusMessage)" }
+            if ($null -eq $sig.TimeStamperCertificate) { throw "No timestamp: $f" }
             $subject = $sig.SignerCertificate.Subject
-            if ($subject -notmatch [regex]::Escape($expectedCn)) { throw "想定外の署名者: $f -> $subject" }
+            if ($subject -notmatch [regex]::Escape($expectedCn)) { throw "Unexpected signer: $f -> $subject" }
             Write-Host "OK  $f"
             Write-Host "    signer:    $subject"
             Write-Host "    timestamp: $($sig.TimeStamperCertificate.Subject)"
-            if ($signtool) { & $signtool.FullName verify /pa /v $f; if ($LASTEXITCODE -ne 0) { throw "signtool verify 失敗: $f" } }
+            if ($signtool) { & $signtool.FullName verify /pa /v $f; if ($LASTEXITCODE -ne 0) { throw "signtool verify failed: $f" } }
           }
-          Write-Host "全 first-party バイナリの署名検証に成功"
+          Write-Host "All first-party binary signatures verified"
 
-      # 署名済みディレクトリを zip 化し SHA-256 を併せて生成。
+      # Zip the signed directory and emit a SHA-256 alongside.
       - name: Package zip + checksum
         id: pack
         shell: pwsh
@@ -232,14 +232,14 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  # 出所証明を付けて GitHub Release を作成。Dry-run(手動 publish=false)ではスキップ。
+  # Create the GitHub Release with provenance attestations. Skipped on dry-run (manual publish=false).
   publish:
     needs: [build, sign]
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
     runs-on: windows-latest
     permissions:
-      contents: write       # Release 作成
-      id-token: write        # keyless OIDC(Sigstore)
+      contents: write       # Create the release
+      id-token: write        # Keyless OIDC (Sigstore)
       attestations: write    # provenance / SBOM attestation
     steps:
       - name: Harden runner
@@ -264,7 +264,7 @@ jobs:
         shell: bash
         run: echo "zip=keep-pressing-${{ needs.build.outputs.version }}-win-x64.zip" >> "$GITHUB_OUTPUT"
 
-      # SLSA ビルド出所証明(keyless, Secret 不要)。
+      # SLSA build provenance (keyless, no secrets).
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
@@ -276,7 +276,7 @@ jobs:
           subject-path: out/${{ steps.pack.outputs.zip }}
           sbom-path: out/bom.json
 
-      # 検証手順: gh attestation verify out/<zip> --repo ${{ github.repository }}
+      # Verify with: gh attestation verify out/<zip> --repo ${{ github.repository }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3
         with:

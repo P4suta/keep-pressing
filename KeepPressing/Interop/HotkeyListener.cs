@@ -10,18 +10,18 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace KeepPressing.Interop;
 
-/// <summary>登録可能なホットキーの識別子（RegisterHotKey の id にそのまま使う）。</summary>
+/// <summary>Hotkey id, used directly as the RegisterHotKey id.</summary>
 public enum HotkeyId
 {
     Toggle = 1,
     CaptureConfirm = 2,
     CaptureCancel = 3,
 
-    /// <summary>緊急停止（実行中のみ Esc を全体登録し、押下で必ず停止する）。</summary>
+    /// <summary>Emergency stop: Esc is registered globally only while running and always stops.</summary>
     EmergencyStop = 4,
 }
 
-/// <summary>修飾キー。値は Win32 の MOD_* と一致する。</summary>
+/// <summary>Modifier keys. Values match Win32 MOD_*.</summary>
 [Flags]
 public enum HotkeyModifiers : uint
 {
@@ -33,10 +33,9 @@ public enum HotkeyModifiers : uint
 }
 
 /// <summary>
-/// RegisterHotKey(hWnd=NULL) によるグローバルホットキー受信。
-/// WM_HOTKEY は呼び出しスレッドのメッセージキューに投函されるため、
-/// 専用バックグラウンドスレッド 1 本だけで完結する（ウィンドウも WNDPROC も不要）。
-/// MOD_NOREPEAT を全登録に無条件付与し、押しっぱなしによるオートリピート発火を OS レベルで防ぐ。
+/// Global hotkeys via RegisterHotKey(hWnd=NULL). WM_HOTKEY is posted to the calling thread's message
+/// queue, so a single dedicated background thread suffices (no window or WNDPROC). MOD_NOREPEAT is added
+/// to every registration to suppress auto-repeat from a held key at the OS level.
 /// </summary>
 public sealed class HotkeyListener : IHotkeyListener, IDisposable
 {
@@ -48,7 +47,7 @@ public sealed class HotkeyListener : IHotkeyListener, IDisposable
     private uint _threadId;
     private bool _disposed;
 
-    /// <summary>ホットキー押下。リスナースレッド上で発火する — 購読側が UI スレッドへマーシャリングすること。</summary>
+    /// <summary>Hotkey pressed. Fires on the listener thread — subscribers must marshal to the UI thread.</summary>
     public event Action<HotkeyId>? Pressed;
 
     public HotkeyListener()
@@ -61,7 +60,7 @@ public sealed class HotkeyListener : IHotkeyListener, IDisposable
         _thread.Start();
     }
 
-    /// <summary>ホットキーを登録する。他アプリと競合している場合は false を返す。どのスレッドからでも呼べる。</summary>
+    /// <summary>Registers a hotkey. Returns false if it conflicts with another app. Callable from any thread.</summary>
     public Task<bool> RegisterAsync(HotkeyId id, HotkeyModifiers modifiers, ushort vk) =>
         PostRequestAsync(new Request.Register(id, modifiers, vk));
 
@@ -75,7 +74,7 @@ public sealed class HotkeyListener : IHotkeyListener, IDisposable
         }
 
         _disposed = true;
-        _ready.Task.Wait();   // スレッド起動直後に完了するため実質待たない
+        _ready.Task.Wait();   // Completes right after thread start, so effectively no wait.
         PInvoke.PostThreadMessage(_threadId, PInvoke.WM_QUIT, default, default);
         _thread.Join();
     }
@@ -84,7 +83,7 @@ public sealed class HotkeyListener : IHotkeyListener, IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        // 初期化ハンドシェイク: キュー生成（PeekMessage）前の PostThreadMessage は失敗しうる。
+        // Init handshake: PostThreadMessage can fail before the queue is created (PeekMessage).
         await _ready.Task;
         _requests.Enqueue(request);
         PInvoke.PostThreadMessage(_threadId, RequestMessage, default, default);
@@ -93,7 +92,7 @@ public sealed class HotkeyListener : IHotkeyListener, IDisposable
 
     private void RunMessageLoop()
     {
-        // メッセージキューを強制生成してから ready を立てる。
+        // Force-create the message queue before signaling ready.
         PInvoke.PeekMessage(out _, HWND.Null, PInvoke.WM_USER, PInvoke.WM_USER, PEEK_MESSAGE_REMOVE_TYPE.PM_NOREMOVE);
         _threadId = PInvoke.GetCurrentThreadId();
         _ready.SetResult();
@@ -112,7 +111,7 @@ public sealed class HotkeyListener : IHotkeyListener, IDisposable
             }
         }
 
-        // WM_QUIT 後: UnregisterHotKey は登録と同一スレッドで呼ぶ必要があるため、ループ脱出後ここで解除する。
+        // After WM_QUIT: UnregisterHotKey must run on the registering thread, so unregister here.
         foreach (var id in registered)
         {
             PInvoke.UnregisterHotKey(HWND.Null, id);

@@ -1,6 +1,5 @@
-# Core は呼び出しコンテキスト（UI スレッドの SynchronizationContext）に依存してはならない。
-# ConfigureAwait(false) を機械的に強制し、「ループはスレッドプール上で走る」を事実として保証する。
-# これはアプリ終了時の長押し Up 保証（UnhandledException ハンドラの同期待機）が
-# デッドロックしないことの前提条件である。
+# Core must not depend on the calling context (the UI thread's SynchronizationContext). Enforcing
+# ConfigureAwait(false) guarantees the loop runs on the thread pool, which is what keeps the app-exit held-Up
+# guarantee (the synchronous wait in the UnhandledException handler) from deadlocking.
 [*.cs]
 dotnet_diagnostic.CA2007.severity = error

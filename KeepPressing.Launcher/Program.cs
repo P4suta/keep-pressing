@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace KeepPressing.Launcher;
 
-// ルート直下のこの exe は、本体一式を隔離した app\ サブフォルダの実体 exe を起動するだけの薄いシム。
-// 「解凍したらどれを起動すればいいか」を一目で分かるようにするためのもので、ロジックは持たない。
+// This root-level exe is a thin shim that just launches the real exe in the app\ subfolder. It exists so
+// users can tell at a glance which file to run after extracting, and holds no logic.
 internal static partial class Program
 {
     private const uint MB_ICONERROR = 0x00000010;
@@ -37,20 +37,20 @@ internal static partial class Program
             var psi = new ProcessStartInfo
             {
                 FileName = appExe,
-                // .NET apphost は .deps.json / .runtimeconfig.json を自身のディレクトリから解決するため、
-                // 作業ディレクトリを app\ に合わせるのは必須。
+                // The .NET apphost resolves .deps.json / .runtimeconfig.json from its own directory, so the
+                // working directory must be app\.
                 WorkingDirectory = appDir,
                 UseShellExecute = false,
             };
 
-            // ランチャーへ渡された引数を本体へそのまま転送する（先頭の実行ファイル名は除く）。
+            // Forward the launcher's arguments to the app (skipping arg 0, the executable name).
             string[] args = Environment.GetCommandLineArgs();
             for (int i = 1; i < args.Length; i++)
             {
                 psi.ArgumentList.Add(args[i]);
             }
 
-            // 子の終了は待たない（spawn-and-exit）。GUI 本体が立ち上がればランチャーの役目は終わり。
+            // Spawn and exit; don't wait for the child. Once the GUI app starts, the launcher is done.
             using (Process.Start(psi))
             {
             }
@@ -64,7 +64,7 @@ internal static partial class Program
         }
     }
 
-    // コンソールを持たない GUI サブシステムでの唯一の報告手段。
+    // The only way to report errors in a console-less GUI subsystem.
     private static void Fail(string message)
         => _ = MessageBoxW(IntPtr.Zero, message, "KeepPressing", MB_ICONERROR);
 }

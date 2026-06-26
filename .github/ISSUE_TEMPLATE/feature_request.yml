@@ -1,19 +1,19 @@
-name: 機能要望
-description: 新機能・改善の提案
+name: Feature request
+description: Propose a new feature or improvement
 labels: [enhancement]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: 解決したい課題
-      description: どんな場面で困っているか
+      label: Problem to solve
+      description: What situation is difficult today
     validations:
       required: true
   - type: textarea
     id: idea
     attributes:
-      label: 提案する解決策
+      label: Proposed solution
   - type: textarea
     id: alternatives
     attributes:
-      label: 代替案・補足
+      label: Alternatives / notes

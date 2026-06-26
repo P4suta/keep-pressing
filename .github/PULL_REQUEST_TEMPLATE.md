@@ -1,17 +1,17 @@
-## 概要
+## Summary
 
-<!-- 変更の目的・背景を簡潔に -->
+<!-- Why this change, briefly -->
 
-## 変更内容
+## Changes
 
 -
 
-## 確認
+## Checks
 
-- [ ] `just build`（Debug・警告=エラー）が通る
-- [ ] `just test` が通る
-- [ ] UI に触れる変更なら、配布版（`just publish`）の起動を確認した
+- [ ] `just build` (Debug, warnings as errors) passes
+- [ ] `just test` passes
+- [ ] For UI changes, verified the portable build (`just publish`) launches
 
-## 関連 Issue
+## Related issues
 
-<!-- 例: Closes #123 -->
+<!-- e.g. Closes #123 -->

@@ -1,22 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- ルート直下に1つだけ置く起動 exe。WinExe で /subsystem:windows となりコンソール窓を出さない。 -->
+    <!-- The single launch exe at the root. WinExe gives /subsystem:windows so no console window appears. -->
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>KeepPressing.Launcher</RootNamespace>
-    <!-- 出力を KeepPressing.exe にし、解凍ルートで「これを起動」と一目で分かるようにする。
-         本体(app\KeepPressing.exe)とはフォルダが別なので名前衝突しない。 -->
+    <!-- Output as KeepPressing.exe so the extract root shows "run this". No name clash with app\KeepPressing.exe (separate folder). -->
     <AssemblyName>KeepPressing</AssemblyName>
     <Platforms>x86;x64;ARM64</Platforms>
-    <!-- 依存ゼロの薄い native exe(約1-2MB)にする。RuntimeIdentifier は publish 時に -r で指定。
-         NativeAOT は publish 時のみ作用し、通常の Debug ビルド(just build)には影響しない。 -->
+    <!-- Dependency-free thin native exe (~1-2MB). RuntimeIdentifier is set via -r at publish. NativeAOT only affects publish, not Debug build. -->
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <!-- LibraryImport(source-generated P/Invoke)は unsafe を要求する。 -->
+    <!-- LibraryImport (source-generated P/Invoke) requires unsafe. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- 本体と同じアイコンを焼き込み、Explorer/タスクバー/Alt-Tab でアプリらしく見せる。 -->
+    <!-- Embed the same icon as the app for Explorer/taskbar/Alt-Tab. -->
     <ApplicationIcon>..\KeepPressing\Assets\AppIcon.ico</ApplicationIcon>
-    <!-- 不要な UAC 昇格を避ける(asInvoker)。本体は昇格不要なポータブルアプリ。 -->
+    <!-- asInvoker: no UAC elevation; the app is a portable app that needs none. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 </Project>

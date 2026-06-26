@@ -5,8 +5,7 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>KeepPressing</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- exe 本体に Win32 アイコンを焼き込む（Explorer/タスクバー/Alt-Tab）。
-         実行時のウィンドウ/タイトルバーは MainWindow の AppWindow.SetIcon が同じ .ico を使う。 -->
+    <!-- Embed the Win32 icon into the exe (Explorer/taskbar/Alt-Tab); the window uses the same .ico via AppWindow.SetIcon. -->
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
@@ -14,17 +13,15 @@
     <UseWinUI>true</UseWinUI>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <!-- ポータブル配布（製品要件）: MSIX 登録なし・WinAppSDK/.NET ランタイム同梱。フォルダ削除で完全撤去 -->
+    <!-- Portable distribution: no MSIX registration, WinAppSDK/.NET runtime bundled, removable by deleting the folder. -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
-    <!-- ポータブル配布の肥大対策: 同梱ローカライズリソースを日本語・英語のみに絞る。
-         WinAppSDK の native MUI を取りこぼす分は下部 TrimPortableDistribution ターゲットで剪定する。 -->
+    <!-- Limit bundled localization resources to en/ja. WinAppSDK native MUI not covered here is pruned by TrimPortableDistribution below. -->
     <SatelliteResourceLanguages>en;ja</SatelliteResourceLanguages>
-    <!-- MRT/PRI の既定（フォールバック）言語。表示言語に一致する resw が無いとき en-US を使う。
-         Strings/<lang>/Resources.resw は WinAppSDK の targets が PRIResource として自動収集する。 -->
+    <!-- MRT/PRI fallback language when no resw matches the display language. -->
     <DefaultLanguage>en-US</DefaultLanguage>
-    <!-- CsWin32 生成コード（INPUT union 等）が unsafe を要求する -->
+    <!-- CsWin32-generated code (INPUT union, etc.) requires unsafe. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
@@ -36,9 +33,8 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
     <Content Include="Assets\StoreLogo.png" />
-    <!-- unpackaged 配布では Content は publish 出力に自動コピーされない。実行時に
-         AppWindow.SetIcon / タイトルバーの ImageIconSource が読むため、AppIcon.ico だけは
-         明示的に出力(=publish の app/)へ配備する。他の PNG タイルは MSIX 専用で未使用。 -->
+    <!-- Unpackaged builds don't auto-copy Content to publish output. AppIcon.ico is read at runtime by
+         AppWindow.SetIcon / the title bar, so deploy it explicitly. The other PNG tiles are MSIX-only and unused. -->
     <Content Include="Assets\AppIcon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -83,7 +79,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- CsWin32 はプロジェクト直下しか自動検出しないため、Interop 配下の列挙ファイルを明示登録する -->
+    <!-- CsWin32 only auto-detects files at the project root, so register the one under Interop\ explicitly. -->
     <AdditionalFiles Include="Interop\NativeMethods.txt" />
   </ItemGroup>
 
@@ -105,10 +101,10 @@
   </PropertyGroup>
 
   <!--
-    ポータブル配布スリム化: publish 後に en/ja 以外の WinAppSDK ローカライズ MUI フォルダと pdb を除去する。
-    SatelliteResourceLanguages は .NET サテライト（resources.dll）のみ絞るため、WinUI の native MUI は
-    ここで宣言的に剪定する。AfterTargets="Publish" のため通常ビルドでは走らず、CLI/VS どちらの発行でも自動実行。
-    .mui ファイルの %(RecursiveDir)（= "af-ZA\" 等の言語フォルダ名）が en/ja で始まらないものを削除。空集合でも no-op で冪等。
+    Portable distribution slimming: after publish, remove WinAppSDK localization MUI folders other than
+    en/ja, plus pdb files. SatelliteResourceLanguages only narrows .NET satellites (resources.dll), so the
+    WinUI native MUI is pruned here. Runs on AfterTargets="Publish" only, for both CLI and VS publish, and is
+    a no-op idempotent on an empty set.
   -->
   <Target Name="TrimPortableDistribution" AfterTargets="Publish">
     <ItemGroup>
@@ -116,9 +112,10 @@
       <_KpLangDirToRemove Include="$(PublishDir)%(_KpMuiFile.RecursiveDir)" Condition="'%(_KpMuiFile.RecursiveDir)' != '' and&#xD;&#xA;                   !$([System.String]::Copy('%(_KpMuiFile.RecursiveDir)').StartsWith('en')) and&#xD;&#xA;                   !$([System.String]::Copy('%(_KpMuiFile.RecursiveDir)').StartsWith('ja'))" />
       <_KpPdb Include="$(PublishDir)**\*.pdb" />
       <!--
-        連打ツールが使わない WinAppSDK の機能 DLL(AI 推論 / Windows AI API / Widgets / WebView2)。
-        いずれも対応 WinRT 型を起動するまでロードされない on-demand 同梱物なので、未使用なら配布から除外できる(約44M)。
-        WinUIEdit / PerceptiveStreaming / CLR 診断系は描画・テキスト編集・例外処理で使われ得るため温存。
+        WinAppSDK feature DLLs this app never uses (AI inference / Windows AI API / Widgets / WebView2).
+        All are on-demand and only loaded when their WinRT types are used, so they can be excluded.
+        WinUIEdit / PerceptiveStreaming / CLR diagnostics are kept since rendering, text editing, and
+        exception handling may use them.
       -->
       <_KpUnusedNativeDll Include="$(PublishDir)onnxruntime.dll" />
       <_KpUnusedNativeDll Include="$(PublishDir)DirectML.dll" />

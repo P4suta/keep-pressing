@@ -3,8 +3,8 @@ using Windows.System;
 namespace KeepPressing.ViewModels;
 
 /// <summary>
-/// 連打対象の種別。UI の「選択途中の状態」を表すため Core の ADT（<c>InputTarget</c>）とは別に持つ
-/// — キーが未設定でも「キーボード」タブは選べる必要があるため、確定済みの ADT インスタンスでは表せない。
+/// Target kind. Kept separate from Core's <c>InputTarget</c> because the UI must allow selecting the
+/// "Keyboard" tab before a key is assigned, which no finished ADT instance can represent.
 /// </summary>
 public enum TargetKind
 {
@@ -12,21 +12,15 @@ public enum TargetKind
     Keyboard,
 }
 
-/// <summary>動作モードの種別。UI の選択状態（確定時に <c>PressMode</c> ADT へ翻訳する）。</summary>
+/// <summary>Press mode kind; translated to the <c>PressMode</c> ADT on commit.</summary>
 public enum PressModeKind
 {
     Repeat,
     Hold,
 }
 
-/// <summary>
-/// ComboBox 等の選択肢。値（型）と表示名の対。XAML は <c>ItemsSource</c> でこのリストをバインドし、
-/// <c>DisplayMemberPath="DisplayName"</c> で表示する。これにより項目の並びを XAML に重複させない。
-/// </summary>
+/// <summary>A choice: value plus display name. XAML binds the list via <c>ItemsSource</c> so item order is not duplicated in XAML.</summary>
 public sealed record Choice<T>(T Value, string DisplayName);
 
-/// <summary>
-/// 開始/停止ホットキーの選択肢。VK と表示名（"F5" 等）の対。
-/// 並行配列＋XAML リテラルの 3 重定義を 1 つの型付きソースに統合する。表示名は言語非依存の記号。
-/// </summary>
+/// <summary>A start/stop hotkey choice: VK plus a language-independent display symbol ("F5", ...).</summary>
 public sealed record HotkeyChoice(VirtualKey Vk, string DisplayKey);
