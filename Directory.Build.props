@@ -10,6 +10,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
 
     <!--
+      net*-windows ターゲットを非 Windows ホストでも restore できるようにする（NETSDK1100 回避）。
+      GitHub の Automatic Dependency Submission(Ubuntu) 等、Linux 上の dotnet restore が通り
+      NuGet 依存グラフが正しく送信される（Dependabot アラート/dependency-review の基盤）。
+      Windows 実機での build/publish の出力には影響しない。
+    -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!--
       .NET アナライザとコードスタイルをビルドで機械的に強制する（従来は Core にも UI にも明示設定がなかった）。
       TreatWarningsAsErrors は WinUI/CsWin32 生成コード由来の警告を潰し切った最終段階で有効化する。
     -->
