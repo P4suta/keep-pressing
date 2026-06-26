@@ -63,3 +63,8 @@ Generated\ Files/
 
 # SBOM 出力(リリース時に生成)
 sbom/
+
+# アイコン生成の作業ディレクトリ(`just icons` が一時利用)
+assets-src/.iconwork/
+# アイコンのプレビュー/検証用中間画像
+assets-src/.chk/
