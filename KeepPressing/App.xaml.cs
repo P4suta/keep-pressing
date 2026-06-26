@@ -19,6 +19,9 @@ public partial class App : Application
 
     public App()
     {
+        // タスクバーのピン留め/グルーピングを安定させる明示的 AUMID（unpackaged 既定の自動 AUMID 回避）。
+        // 最初のウィンドウ表示前＝UI 生成前に設定する必要があるためコンストラクタ先頭で呼ぶ。
+        _ = Windows.Win32.PInvoke.SetCurrentProcessExplicitAppUserModelID("P4suta.KeepPressing");
         InitializeComponent();
     }
 

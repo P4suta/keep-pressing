@@ -36,7 +36,12 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
     <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\AppIcon.ico" />
+    <!-- unpackaged 配布では Content は publish 出力に自動コピーされない。実行時に
+         AppWindow.SetIcon / タイトルバーの ImageIconSource が読むため、AppIcon.ico だけは
+         明示的に出力(=publish の app/)へ配備する。他の PNG タイルは MSIX 専用で未使用。 -->
+    <Content Include="Assets\AppIcon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
 
