@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- ルート直下に1つだけ置く起動 exe。WinExe で /subsystem:windows となりコンソール窓を出さない。 -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>KeepPressing.Launcher</RootNamespace>
+    <!-- 出力を KeepPressing.exe にし、解凍ルートで「これを起動」と一目で分かるようにする。
+         本体(app\KeepPressing.exe)とはフォルダが別なので名前衝突しない。 -->
+    <AssemblyName>KeepPressing</AssemblyName>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <!-- 依存ゼロの薄い native exe(約1-2MB)にする。RuntimeIdentifier は publish 時に -r で指定。
+         NativeAOT は publish 時のみ作用し、通常の Debug ビルド(just build)には影響しない。 -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- LibraryImport(source-generated P/Invoke)は unsafe を要求する。 -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- 本体と同じアイコンを焼き込み、Explorer/タスクバー/Alt-Tab でアプリらしく見せる。 -->
+    <ApplicationIcon>..\KeepPressing\Assets\AppIcon.ico</ApplicationIcon>
+    <!-- 不要な UAC 昇格を避ける(asInvoker)。本体は昇格不要なポータブルアプリ。 -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+</Project>
