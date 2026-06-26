@@ -18,3 +18,4 @@ HOT_KEY_MODIFIERS
 MAP_VIRTUAL_KEY_TYPE
 ImmAssociateContextEx
 IACE_DEFAULT
+SetCurrentProcessExplicitAppUserModelID
