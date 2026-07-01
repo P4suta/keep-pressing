@@ -8,8 +8,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="KeepPressing"
     mc:Ignorable="d">
+    <!-- Mica is the Win11-standard material for a long-lived app window; it falls back to a solid color on unsupported systems automatically. -->
     <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
+        <MicaBackdrop />
     </Window.SystemBackdrop>
 
     <Grid>

@@ -18,6 +18,13 @@ namespace KeepPressing.ViewModels;
 /// </summary>
 public sealed partial class MainPageViewModel : ObservableObject
 {
+    // Interval input bounds (ms): constraints for the NumberBox. The domain separately clamps to >= 1ms
+    // (see SpecBuilder), so these are purely the editing range/step the UI offers.
+    public const double IntervalMinMs = 10;
+    public const double IntervalMaxMs = 10000;
+    public const double IntervalStepMs = 10;
+    public const double IntervalDefaultMs = 50;
+
     private readonly PressEngine _engine;
     private readonly IHotkeyListener _hotkeys;
     private readonly ICursorLocator _cursor;
@@ -51,7 +58,7 @@ public sealed partial class MainPageViewModel : ObservableObject
         SelectedMouseButton = MouseButtons[0];
         SelectedMode = Modes[0];
         KeyDisplay = loc.GetString("Key_Unset");
-        IntervalMs = 50;
+        IntervalMs = IntervalDefaultMs;
         LivePositionText = "";
         StatusText = loc.GetString("Status_Idle");
 

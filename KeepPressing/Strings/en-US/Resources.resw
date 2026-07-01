@@ -106,11 +106,8 @@
   <data name="TargetKeyboard.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Keyboard</value>
   </data>
-  <data name="MouseSettings.Header" xml:space="preserve">
-    <value>Mouse settings</value>
-  </data>
-  <data name="MouseSettings.Description" xml:space="preserve">
-    <value>Button and click position</value>
+  <data name="MouseGroupHeader.Text" xml:space="preserve">
+    <value>Mouse</value>
   </data>
   <data name="MouseButtonCard.Header" xml:space="preserve">
     <value>Button</value>
@@ -151,6 +148,9 @@
   <data name="CancelCaptureButton.Content" xml:space="preserve">
     <value>Cancel (Esc)</value>
   </data>
+  <data name="KeyGroupHeader.Text" xml:space="preserve">
+    <value>Keyboard</value>
+  </data>
   <data name="KeyCard.Header" xml:space="preserve">
     <value>Key</value>
   </data>
@@ -166,8 +166,11 @@
   <data name="KeyCaptureHint.Text" xml:space="preserve">
     <value>Press the key you want to assign.</value>
   </data>
-  <data name="ActionCard.Header" xml:space="preserve">
+  <data name="ActionGroupHeader.Text" xml:space="preserve">
     <value>Action</value>
+  </data>
+  <data name="ActionCard.Header" xml:space="preserve">
+    <value>Mode</value>
   </data>
   <data name="ActionCard.Description" xml:space="preserve">
     <value>Repeat or hold</value>
