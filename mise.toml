@@ -1,3 +1,25 @@
+# Toolchain pinning for keep-pressing.
+# This machine manages tools via chezmoi + mise — do NOT install toolchains ad hoc;
+# declare them here and run `mise install` (or `just setup`).
 [tools]
 dotnet = "10.0.300"
+# Task runner (justfile). CI (ci.yml / release.yml) builds the distributable via
+# the same `just publish` recipe — no second copy of the bundling logic.
 just = "1.51.0"
+# Git-hook manager. `just setup` runs `lefthook install`; pinning it here keeps the
+# hooks reproducible instead of relying on a globally-installed binary. Registered
+# mise short-name → aqua backend.
+lefthook = "2"
+# Conventional-Commits linter for the lefthook commit-msg hook (ADR-0001) — the
+# local guard that keeps release-please's version + CHANGELOG derivation fed with
+# well-formed commits. cargo backend, binstalled.
+"cargo:committed" = "1"
+# actionlint lints .github/workflows/*.yml (syntax, ${{ }} expression types,
+# shellcheck over run: blocks). Pinned here so workflow edits can be validated
+# locally before push (github backend fetches the prebuilt release binary).
+"github:rhysd/actionlint" = "1.7.12"
+
+[settings]
+# Fetch cargo: backend tools as prebuilt binaries (cargo-binstall) rather than
+# `cargo install` from source — much faster locally and in CI.
+cargo.binstall = true

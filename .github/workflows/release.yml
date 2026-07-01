@@ -1,34 +1,86 @@
+# Dispatched (by release-please) build / sign / publish, split into three jobs so
+# the signing credentials touch the smallest possible surface (ADR-0001):
+#
+#   build   -> assembles the portable bundle (`just publish`) + a CycloneDX SBOM and
+#              uploads them as artifacts. Holds NO secrets, read-only token.
+#   sign    -> downloads the bundle and Authenticode-signs our own four PE files
+#              with SSL.com eSigner via the official SSLcom/esigner-codesign Action
+#              (command: batch_sign, SHA-pinned). The four PEs are staged into a flat
+#              dir through a path->unique-name map (the root launcher and app\ apphost
+#              share the basename KeepPressing.exe), signed into an explicit output
+#              dir, and copied back; then we hard-verify chain + timestamp + signer.
+#              This is the only job that sees the signing secrets, so it runs in the
+#              approval-gated `release` environment.
+#   publish -> downloads the signed bundle, RE-VERIFIES it is signed (a gate at the
+#              irreversible boundary), zips + checksums it, writes keyless
+#              build-provenance + SBOM attestations (Sigstore via the OIDC
+#              GITHUB_TOKEN - no stored secrets) and attaches everything to the
+#              release-please draft, then publishes it. Runs only when publish=true.
+#
+# release.yml is started ONLY by an explicit dispatch from release-please.yml (after
+# a Release PR merge creates the DRAFT release), never by a tag push — so a stray or
+# manual `vX.Y.Z` tag starts nothing. release-please materializes the tag at merge
+# (`force-tag-creation`); the publish job attaches assets to that draft and publishes
+# it, in the asset-before-publish order immutable releases require.
+#
+# Auth: the default GITHUB_TOKEN for the release; SSL.com eSigner via four `release`
+# environment secrets (ES_USERNAME / ES_PASSWORD / CREDENTIAL_ID / ES_TOTP_SECRET).
+# Signing is gated at publish: a real run re-verifies the bundle is validly signed and
+# FAILS before creating the immutable Release if it is not, so a missing/misconfigured
+# secret can never ship an unsigned release unnoticed. A publish=false smoke test still
+# runs to completion UNSIGNED with a ::warning:: (it creates no Release).
+#
+# Verify a download with `gh attestation verify <zip> --repo P4suta/keep-pressing`.
 name: Release
 
-# Production release on v* tag push. Manual dispatch (publish=false) runs build->sign->verify only
-# (a signing smoke test / dry-run). build / sign / publish are split to minimize exposure of signing keys,
-# which live only in the release Environment (an approval gate).
 on:
-  push:
-    tags: ['v*']
+  # Dispatched by release-please.yml once it creates the DRAFT release. Also runnable
+  # by hand for a signing smoke test (publish=false).
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name (e.g. v1.2.3)'
+        description: "Version tag to release (e.g. v0.1.0), or a branch/ref for a publish=false signing test"
         required: true
         type: string
-      publish:
-        description: 'Actually create a GitHub Release (off = dry-run)'
+      sha:
+        description: "Commit SHA to build from (release-please passes the release commit; omit to build from tag_name)"
         required: false
+        type: string
+      publish:
+        description: "Publish the GitHub Release (false = build+sign+verify only, no release/attestations)"
+        required: false
+        default: true
         type: boolean
-        default: false
+
+# One release per ref at a time; never cancel a run mid-sign/mid-publish.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 # Read-only by default; each job elevates only what it needs.
 permissions:
   contents: read
 
-# Don't cancel mid sign/publish (serialize releases for the same ref).
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+env:
+  # The version tag (vX.Y.Z) — reused for zip naming and the release.
+  TAG: ${{ inputs.tag_name }}
+  # Where to get the code: the release commit SHA when release-please dispatches us
+  # (the tag doesn't exist yet, and pinning the SHA avoids main moving during the
+  # approval waits); falls back to tag_name for a manual branch smoke test. All three
+  # jobs check this ref out, and the local verify-signatures action is resolved from
+  # its tree — so env.REF must point at a commit that contains that action.
+  REF: ${{ inputs.sha || inputs.tag_name }}
+  # Our SSL.com IV certificate's subject — asserted at verify time (both the sign
+  # self-check and the publish gate) so a different (even validly-chained)
+  # certificate cannot pass silently. Workflow-level so both jobs share one value.
+  SIGNER_SUBJECT_CONTAINS: "CN=Yasunobu Sakashita"
 
 jobs:
-  # Build the distributable and SBOM only. Touches no secrets.
+  # ---------------------------------------------------------------------------
+  # 1) Build the portable bundle + SBOM. No secrets here. The csproj <Version> is
+  #    already the release version (release-please wrote it in the release commit),
+  #    so no build-time version stamping is needed.
+  # ---------------------------------------------------------------------------
   build:
     runs-on: windows-latest
     permissions:
@@ -36,7 +88,18 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
-      # harden-runner: audit only, since egress filtering is limited on Windows runners.
+      # Fail fast on a publishing run pointed at a non-version ref before the gated
+      # `sign` job burns a reviewer approval + an eSigner signing quota on a misfire.
+      # A publish=false smoke test (e.g. tag_name=main) is deliberately exempt.
+      - name: Validate tag for a publishing run
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+        shell: bash
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::publishing run requires a vX.Y.Z tag, got '$TAG' (use publish=false for a signing smoke test from a branch)"
+            exit 1
+          fi
+
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
@@ -44,17 +107,19 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.REF }}
 
       - name: Setup toolchain (mise)
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4
 
-      # github.ref_name on tag push, inputs.tag_name on manual; strip the leading v.
+      # github.ref_name doesn't exist for the tag (not created until publish); derive
+      # the bare version from the dispatched tag_name.
       - name: Resolve version
         id: ver
         shell: bash
         run: |
-          ref="${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}"
-          version="${ref#v}"
+          version="${TAG#v}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "resolved version: $version"
 
@@ -71,10 +136,10 @@ jobs:
           mise x -- dotnet CycloneDX KeepPressing/KeepPressing.csproj --out sbom --json
           ls -l sbom
 
-      - name: Upload portable artifact
+      - name: Upload unsigned bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: portable
+          name: dist
           path: dist/KeepPressing
           retention-days: 1
           if-no-files-found: error
@@ -87,171 +152,166 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  # Authenticode-sign first-party binaries only. Signing secrets are isolated in the release Environment;
-  # if unset, warn and continue unsigned (non-blocking).
+  # ---------------------------------------------------------------------------
+  # 2) Authenticode-sign our own PEs with SSL.com eSigner (the official
+  #    SSLcom/esigner-codesign Action). The only job with signing secrets ->
+  #    approval-gated `release` environment.
+  # ---------------------------------------------------------------------------
   sign:
     needs: build
     runs-on: windows-latest
     environment: release
     permissions:
       contents: read
+    env:
+      # secrets.* cannot be referenced in `if:`; hoist presence to a job-level env
+      # bool, then gate the signing steps on env.HAVE_SIGNING. batch_sign is driven
+      # by the credential_id, so gate on its presence.
+      HAVE_SIGNING: ${{ secrets.ES_USERNAME != '' && secrets.CREDENTIAL_ID != '' }}
     steps:
+      # The Verify step uses a local composite action, which needs the repo tree
+      # present. Pin to the same release commit the bundle was built from. Runs first,
+      # before the artifact download below, so checkout's clean does not wipe the
+      # downloaded bundle.
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: audit
 
-      - name: Download portable artifact
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.REF }}
+
+      - name: Download unsigned bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: portable
+          name: dist
           path: dist/KeepPressing
 
-      # Sign own assemblies only; don't re-sign Microsoft-signed runtime/WinAppSDK. Detect secret presence
-      # here to gate the signing steps that follow.
-      - name: Gate signing
-        id: gate
-        shell: bash
-        env:
-          ES_USERNAME: ${{ secrets.ES_USERNAME }}
-        run: |
-          if [ -n "$ES_USERNAME" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "Signing secret detected: signing will run"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Unsigned release::Signing secret (ES_USERNAME etc.) not set; continuing unsigned"
-          fi
-
-      # esigner-codesign works one file at a time. Sign the 4 own files (root launcher + 3 in app/) in turn.
-      # The root KeepPressing.exe is the launcher end users run, so it's included.
-      - name: Sign KeepPressing.exe (launcher, root)
-        if: steps.gate.outputs.enabled == 'true'
-        uses: SSLcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b # v1.3.2
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}\dist\KeepPressing\KeepPressing.exe
-          override: true
-          malware_block: false
-          environment_name: PROD
-
-      - name: Sign app/KeepPressing.exe
-        if: steps.gate.outputs.enabled == 'true'
-        uses: SSLcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b # v1.3.2
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}\dist\KeepPressing\app\KeepPressing.exe
-          override: true
-          malware_block: false
-          environment_name: PROD
-
-      - name: Sign app/KeepPressing.dll
-        if: steps.gate.outputs.enabled == 'true'
-        uses: SSLcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b # v1.3.2
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}\dist\KeepPressing\app\KeepPressing.dll
-          override: true
-          malware_block: false
-          environment_name: PROD
-
-      - name: Sign app/KeepPressing.Core.dll
-        if: steps.gate.outputs.enabled == 'true'
-        uses: SSLcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b # v1.3.2
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}\dist\KeepPressing\app\KeepPressing.Core.dll
-          override: true
-          malware_block: false
-          environment_name: PROD
-
-      # Strictly verify the signature chain, RFC3161 timestamp, and signer CN (only when signing ran).
-      - name: Verify signatures
-        if: steps.gate.outputs.enabled == 'true'
+      # Collect just our own PE files into a flat staging dir for batch_sign. The
+      # bundled .NET / WindowsAppSDK runtime DLLs are already Microsoft-signed —
+      # re-signing them would waste eSigner quota and claim authorship we don't have.
+      # The root launcher and the app\ apphost share the basename KeepPressing.exe, so
+      # a flat copy-by-basename would collide; stage via a path -> unique-name map
+      # (Authenticode lives inside the PE, so the rename is safe) and map back after.
+      - name: Stage first-party binaries for signing
+        if: env.HAVE_SIGNING == 'true'
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          $expectedCn = 'CN=Yasunobu Sakashita'
-          $files = @(
-            'dist/KeepPressing/KeepPressing.exe',
-            'dist/KeepPressing/app/KeepPressing.exe',
-            'dist/KeepPressing/app/KeepPressing.dll',
-            'dist/KeepPressing/app/KeepPressing.Core.dll'
+          $map = @(
+            @{ Src = 'KeepPressing.exe';          Stage = 'KeepPressing.exe' }
+            @{ Src = 'app/KeepPressing.exe';      Stage = 'app-KeepPressing.exe' }
+            @{ Src = 'app/KeepPressing.dll';      Stage = 'KeepPressing.dll' }
+            @{ Src = 'app/KeepPressing.Core.dll'; Stage = 'KeepPressing.Core.dll' }
           )
-          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' -ErrorAction SilentlyContinue |
-            Sort-Object FullName -Descending | Select-Object -First 1
-          foreach ($f in $files) {
-            $sig = Get-AuthenticodeSignature -FilePath $f
-            if ($sig.Status -ne 'Valid') { throw "Invalid signature: $f -> $($sig.Status) $($sig.StatusMessage)" }
-            if ($null -eq $sig.TimeStamperCertificate) { throw "No timestamp: $f" }
-            $subject = $sig.SignerCertificate.Subject
-            if ($subject -notmatch [regex]::Escape($expectedCn)) { throw "Unexpected signer: $f -> $subject" }
-            Write-Host "OK  $f"
-            Write-Host "    signer:    $subject"
-            Write-Host "    timestamp: $($sig.TimeStamperCertificate.Subject)"
-            if ($signtool) { & $signtool.FullName verify /pa /v $f; if ($LASTEXITCODE -ne 0) { throw "signtool verify failed: $f" } }
-          }
-          Write-Host "All first-party binary signatures verified"
+          New-Item -ItemType Directory -Force sign-stage | Out-Null
+          New-Item -ItemType Directory -Force signed | Out-Null
+          $map | ForEach-Object { Copy-Item "dist/KeepPressing/$($_.Src)" "sign-stage/$($_.Stage)" }
 
-      # Zip the signed directory and emit a SHA-256 alongside.
-      - name: Package zip + checksum
-        id: pack
+      - name: Sign staged binaries (SSL.com eSigner)
+        if: env.HAVE_SIGNING == 'true'
+        uses: SSLcom/esigner-codesign@cf5f6c1d38ad10f47e3ed9aca873f429b1a8d85b # v1.3.2
+        with:
+          command: batch_sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          dir_path: ${{ github.workspace }}\sign-stage
+          # Write signed files to a dedicated dir. batch_sign does NOT honor
+          # `override` (the Action never forwards -override), so without an explicit
+          # output_path the signed files land elsewhere and copy-back would grab the
+          # unsigned originals (-> Verify "NotSigned").
+          output_path: ${{ github.workspace }}\signed
+          environment_name: PROD
+          # Our SSL.com account requires a pre-signing malware scan; with this off,
+          # batch_sign sends only hashes and SSL.com rejects with "hash needs to be
+          # scanned first". true makes the Action scan the files inline before
+          # signing. CodeSignTool timestamps via SSL.com's TSA, so the signatures
+          # outlive the cert (Verify enforces a timestamp below).
+          malware_block: "true"
+
+      - name: Copy signed binaries back into the bundle
+        if: env.HAVE_SIGNING == 'true'
         shell: pwsh
         run: |
-          $version = '${{ needs.build.outputs.version }}'
-          $zip = "keep-pressing-$version-win-x64.zip"
-          Compress-Archive -Path dist/KeepPressing -DestinationPath $zip -Force
-          (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() + "  $zip" |
-            Out-File -FilePath "$zip.sha256" -Encoding ascii
-          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "packaged $zip"
+          $map = @(
+            @{ Src = 'KeepPressing.exe';          Stage = 'KeepPressing.exe' }
+            @{ Src = 'app/KeepPressing.exe';      Stage = 'app-KeepPressing.exe' }
+            @{ Src = 'app/KeepPressing.dll';      Stage = 'KeepPressing.dll' }
+            @{ Src = 'app/KeepPressing.Core.dll'; Stage = 'KeepPressing.Core.dll' }
+          )
+          $map | ForEach-Object { Copy-Item "signed/$($_.Stage)" "dist/KeepPressing/$($_.Src)" -Force }
 
-      - name: Upload package artifact
+      # Never ship a "signed" build that is silently unsigned, untimestamped, or
+      # signed by the wrong cert. The verify (chain + RFC 3161 timestamp + signer
+      # subject) lives in a composite action shared with the publish gate so the two
+      # can't drift — so when signing secrets are present a publish=false smoke test
+      # runs the publish gate's identical check here.
+      - name: Verify signatures
+        if: env.HAVE_SIGNING == 'true'
+        uses: ./.github/actions/verify-signatures
+        with:
+          bundle-dir: dist/KeepPressing
+          signer-subject-contains: ${{ env.SIGNER_SUBJECT_CONTAINS }}
+
+      - name: Warn if unsigned
+        if: env.HAVE_SIGNING != 'true'
+        run: echo "::warning::Signing secrets absent - publishing UNSIGNED binaries (SmartScreen will warn end users)."
+
+      - name: Upload signed bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: package
-          path: |
-            ${{ steps.pack.outputs.zip }}
-            ${{ steps.pack.outputs.zip }}.sha256
+          name: dist-signed
+          path: dist/KeepPressing
           retention-days: 1
           if-no-files-found: error
 
-  # Create the GitHub Release with provenance attestations. Skipped on dry-run (manual publish=false).
+  # ---------------------------------------------------------------------------
+  # 3) Zip + checksum the signed bundle, attest, and attach to the draft Release.
+  # ---------------------------------------------------------------------------
   publish:
     needs: [build, sign]
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
     runs-on: windows-latest
+    # Second approval gate on the irreversible step (ADR-0001): the GitHub Release is
+    # immutable, so publishing requires its own explicit human approval in the
+    # `release` environment, distinct from the `sign` approval ("sign this?" vs
+    # "release this to the world?"). Defence in depth against an accidental release.
+    environment: release
     permissions:
-      contents: write       # Create the release
-      id-token: write        # Keyless OIDC (Sigstore)
-      attestations: write    # provenance / SBOM attestation
+      contents: write # create the GitHub Release + upload assets
+      id-token: write # OIDC token for keyless Sigstore signing (attestations)
+      attestations: write # write build-provenance + SBOM attestations
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:
           egress-policy: audit
 
-      - name: Download package artifact
+      # The repo tree is needed for the local verify-signatures composite action.
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ env.REF }}
+
+      - name: Download signed bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: package
-          path: out
+          name: dist-signed
+          path: dist/KeepPressing
+
+      # Gate at the irreversible boundary: a real publish must ship signed binaries.
+      # If the signing secrets were absent the sign job only warned and passed the
+      # bundle through UNSIGNED — fail HERE, before any attestation or the immutable
+      # Release, rather than publishing unsigned. Same composite verify the sign job
+      # runs (shared, smoke-tested).
+      - name: Require the bundle to be signed before publishing
+        uses: ./.github/actions/verify-signatures
+        with:
+          bundle-dir: dist/KeepPressing
+          signer-subject-contains: ${{ env.SIGNER_SUBJECT_CONTAINS }}
 
       - name: Download SBOM artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -259,30 +319,47 @@ jobs:
           name: sbom
           path: out
 
-      - name: Resolve zip name
+      # Zip the signed bundle and emit a SHA-256 alongside.
+      - name: Package zip + checksum
         id: pack
-        shell: bash
-        run: echo "zip=keep-pressing-${{ needs.build.outputs.version }}-win-x64.zip" >> "$GITHUB_OUTPUT"
+        shell: pwsh
+        run: |
+          $version = "$env:TAG".TrimStart('v')
+          $zip = "keep-pressing-$version-win-x64.zip"
+          Compress-Archive -Path dist/KeepPressing -DestinationPath "out/$zip" -Force
+          (Get-FileHash "out/$zip" -Algorithm SHA256).Hash.ToLower() + "  $zip" |
+            Out-File -FilePath "out/$zip.sha256" -Encoding ascii
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "packaged out/$zip"
 
-      # SLSA build provenance (keyless, no secrets).
+      # Build provenance + SBOM attestations for the published artifacts. Keyless via
+      # the workflow's OIDC token (no stored secrets).
+      # Verify: gh attestation verify <zip> --repo P4suta/keep-pressing
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
-          subject-path: out/${{ steps.pack.outputs.zip }}
+          subject-path: |
+            out/${{ steps.pack.outputs.zip }}
+            out/${{ steps.pack.outputs.zip }}.sha256
 
       - name: Attest SBOM
-        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: out/${{ steps.pack.outputs.zip }}
           sbom-path: out/bom.json
 
-      # Verify with: gh attestation verify out/<zip> --repo ${{ github.repository }}
-      - name: Create GitHub Release
+      # release-please created this release as a DRAFT (config "draft": true) — no
+      # assets, no git tag yet. Uploading to a draft is allowed; softprops uploads the
+      # files and THEN publishes the draft (the order immutable releases require:
+      # assets must be in place before publish). Publishing is what creates the vX.Y.Z
+      # tag. `draft` is intentionally omitted so the action publishes after upload; the
+      # notes are release-please's, so we don't regenerate them.
+      - name: Publish the draft release with the signed assets
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          tag_name: ${{ env.TAG }}
           files: |
             out/${{ steps.pack.outputs.zip }}
             out/${{ steps.pack.outputs.zip }}.sha256
-          generate_release_notes: true
+            out/bom.json
           fail_on_unmatched_files: true

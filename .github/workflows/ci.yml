@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # labeled/unlabeled are added so the label-driven `release-gate` re-evaluates
+    # when `release: approved` is added/removed — without them, a label change
+    # leaves the gate's result stale (it would need a manual re-run). The default
+    # activity types must be listed explicitly once `types:` is set.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -111,3 +116,57 @@ jobs:
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: on-failure
+
+  # Enforce a Conventional Commit PR title. On a squash merge the PR title becomes
+  # the commit, so this is the authoritative check that feeds release-please's
+  # version + CHANGELOG derivation (the lefthook commit-msg hook is the earlier,
+  # local signal). ADR-0001.
+  pr-title:
+    name: pr-title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Defence in depth (ADR-0001): a release-please Release PR (labelled
+  # "autorelease: pending") cannot merge until a human deliberately adds the
+  # "release: approved" label — so cutting a real release is an explicit act, not
+  # an accidental merge. Every non-release PR passes unconditionally. Re-evaluates
+  # on labeled/unlabeled events (see the trigger). Add this as a required status
+  # check in branch protection for the gate to be binding.
+  release-gate:
+    name: release-gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+      - name: Require an explicit approval label on a Release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          labels=$(gh pr view "$PR" --repo "$REPO" --json labels -q '.labels[].name')
+          if echo "$labels" | grep -qx "autorelease: pending"; then
+            if echo "$labels" | grep -qx "release: approved"; then
+              echo "Release PR carries 'release: approved' — gate open."
+            else
+              echo "::error::This is a release PR. Add the 'release: approved' label to allow merge (deliberate release; ADR-0001)."
+              exit 1
+            fi
+          else
+            echo "Not a release PR — gate passes."
+          fi
