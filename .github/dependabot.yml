@@ -1,18 +1,28 @@
 version: 2
 updates:
-  # NuGet dependencies (WindowsAppSDK / CommunityToolkit / CsWin32 / xunit, etc.)
+  # NuGet dependencies (WindowsAppSDK / CommunityToolkit / CsWin32 / xunit, etc.),
+  # across every project under the repo. Grouped into one PR to cut review noise.
+  # `build` prefix matches committed.toml / the pr-title gate's allowed types.
   - package-ecosystem: nuget
     directory: "/"
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 10
+    groups:
+      dotnet:
+        patterns: ["*"]
     commit-message:
-      prefix: "chore(deps)"
+      prefix: build
 
-  # GitHub Actions (checkout / mise-action / action-gh-release)
+  # GitHub Actions (checkout / mise-action / esigner / attest / action-gh-release).
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
     commit-message:
-      prefix: "chore(ci)"
+      prefix: ci

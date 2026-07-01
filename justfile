@@ -7,6 +7,11 @@ sln := "KeepPressing.slnx"
 default:
     @just --list
 
+# One-time setup: install the pinned toolchain (mise.toml) + git hooks (lefthook).
+setup:
+    mise install
+    mise x -- lefthook install
+
 # Build everything (Debug)
 build:
     mise x -- dotnet build {{sln}}

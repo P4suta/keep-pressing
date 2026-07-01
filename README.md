@@ -28,6 +28,7 @@ For a fixed position, choose "capture from screen", move the mouse to the target
 The toolchain is managed by [mise](https://mise.jdx.dev/) (`mise.toml` pins the .NET SDK and [just](https://just.systems/)). Tasks live in the [justfile](justfile).
 
 ```
+just setup      # one-time: install the pinned toolchain + git hooks (lefthook)
 just build      # build everything (Debug)
 just test       # run tests
 just publish    # portable publish (x64) -> dist/KeepPressing
@@ -35,6 +36,12 @@ just clean      # remove bin/obj
 ```
 
 The root launcher is built with NativeAOT, which needs **VS C++ Build Tools (MSVC)**. Without it, `just publish` skips the launcher; start `app/KeepPressing.exe` directly instead.
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (enforced locally by the `just setup` git hook and on PRs by the title check) — this feeds automated versioning.
+
+## Releasing
+
+Versioning and releases are automated with [release-please](https://github.com/googleapis/release-please): merging its Release PR bumps the version + `CHANGELOG.md` and publishes a signed GitHub Release. See [docs/RELEASING.md](docs/RELEASING.md) for the flow and one-time activation.
 
 ## Known limitations
 

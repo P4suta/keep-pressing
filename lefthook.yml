@@ -1,0 +1,19 @@
+commit-msg:
+  jobs:
+    # Conventional Commits feed release-please's version + CHANGELOG derivation
+    # (ADR-0001). The PR-title gate in ci.yml is authoritative for squash-merges;
+    # this is the earlier, local signal. {1} = the commit-message file git hands
+    # the commit-msg hook. Do not bypass with --no-verify.
+    - name: conventional-commit
+      run: committed --commit-file {1}
+
+# Runs before `git push`. Sequential (not parallel): both recipes drive dotnet on
+# the same solution, so a shared obj/bin would contend. `just test` builds Debug
+# too, but `just build` first gives the warnings-as-errors quality gate its own
+# clear failure. Nothing is skipped; --no-verify stays forbidden.
+pre-push:
+  jobs:
+    - name: build
+      run: just build
+    - name: test
+      run: just test

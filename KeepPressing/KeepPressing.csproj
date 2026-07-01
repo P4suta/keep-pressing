@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Version of record, owned by release-please (ADR-0001). The trailing marker
+         comment lets release-please's generic updater bump this line on each cut;
+         the git tag vX.Y.Z and this value are written in the same release commit, so
+         they never drift. Also stamps AssemblyVersion/FileVersion/InformationalVersion. -->
+    <Version>0.0.0</Version> <!-- x-release-please-version -->
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
