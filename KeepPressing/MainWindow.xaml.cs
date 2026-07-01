@@ -18,6 +18,11 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
 
+    // Initial window size in device-independent pixels, scaled to physical pixels by the display DPI.
+    private const int DefaultWidthDip = 640;
+    private const int DefaultHeightDip = 820;
+    private const double BaselineDpi = 96.0;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -32,8 +37,8 @@ public sealed partial class MainWindow : Window
         // AppWindow.Resize takes physical pixels, so scale the DIP target by the
         // window's DPI. Without this the window is undersized on high-DPI displays.
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        var scale = GetDpiForWindow(hwnd) / 96.0;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(640 * scale), (int)(820 * scale)));
+        var scale = GetDpiForWindow(hwnd) / BaselineDpi;
+        AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(DefaultWidthDip * scale), (int)(DefaultHeightDip * scale)));
 
         // Navigate the root frame to the main page on startup.
         RootFrame.Navigate(typeof(MainPage));

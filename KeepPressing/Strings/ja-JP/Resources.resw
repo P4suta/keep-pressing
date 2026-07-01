@@ -106,11 +106,8 @@
   <data name="TargetKeyboard.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>キーボード</value>
   </data>
-  <data name="MouseSettings.Header" xml:space="preserve">
-    <value>マウス設定</value>
-  </data>
-  <data name="MouseSettings.Description" xml:space="preserve">
-    <value>ボタン・クリック位置の設定</value>
+  <data name="MouseGroupHeader.Text" xml:space="preserve">
+    <value>マウス</value>
   </data>
   <data name="MouseButtonCard.Header" xml:space="preserve">
     <value>ボタン</value>
@@ -151,6 +148,9 @@
   <data name="CancelCaptureButton.Content" xml:space="preserve">
     <value>キャンセル (Esc)</value>
   </data>
+  <data name="KeyGroupHeader.Text" xml:space="preserve">
+    <value>キーボード</value>
+  </data>
   <data name="KeyCard.Header" xml:space="preserve">
     <value>キー</value>
   </data>
@@ -166,8 +166,11 @@
   <data name="KeyCaptureHint.Text" xml:space="preserve">
     <value>このまま割り当てたいキーを押してください。</value>
   </data>
-  <data name="ActionCard.Header" xml:space="preserve">
+  <data name="ActionGroupHeader.Text" xml:space="preserve">
     <value>動作</value>
+  </data>
+  <data name="ActionCard.Header" xml:space="preserve">
+    <value>モード</value>
   </data>
   <data name="ActionCard.Description" xml:space="preserve">
     <value>連打 または 長押し</value>

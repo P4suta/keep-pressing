@@ -10,7 +10,41 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+
+            <!--
+                Design tokens: non-themed layout constants (sizes, the spacing scale, paddings, and icon
+                glyphs) centralized here so the views carry no magic numbers. Colors are intentionally NOT
+                tokenized; the standard Fluent ThemeResource brushes handle Light/Dark/HighContrast.
+            -->
+
+            <!-- Content width -->
+            <x:Double x:Key="ContentMaxWidth">640</x:Double>
+
+            <!-- Spacing scale (4px grid) -->
+            <x:Double x:Key="SpacingXSmall">4</x:Double>
+            <x:Double x:Key="SpacingSmall">8</x:Double>
+            <x:Double x:Key="SpacingMedium">12</x:Double>
+            <x:Double x:Key="SpacingLarge">20</x:Double>
+
+            <!-- Control metrics -->
+            <x:Double x:Key="PrimaryButtonMinHeight">48</x:Double>
+            <x:Double x:Key="PrimaryButtonFontSize">16</x:Double>
+            <x:Double x:Key="StatusIndicatorSize">16</x:Double>
+            <x:Double x:Key="ComboBoxMinWidth">160</x:Double>
+            <x:Double x:Key="NumberBoxMinWidth">140</x:Double>
+            <x:Double x:Key="CoordinateBoxMinWidth">100</x:Double>
+            <x:Double x:Key="HotkeyComboBoxMinWidth">90</x:Double>
+
+            <!-- Zone paddings / local margins -->
+            <Thickness x:Key="CommandZonePadding">24,16</Thickness>
+            <Thickness x:Key="SettingsZonePadding">24,16,24,24</Thickness>
+            <Thickness x:Key="CaptureContentMargin">0,0,0,12</Thickness>
+
+            <!-- Segoe Fluent Icons glyphs -->
+            <x:String x:Key="GlyphMouse">&#xE962;</x:String>
+            <x:String x:Key="GlyphKeyboard">&#xE765;</x:String>
+            <x:String x:Key="GlyphAction">&#xE8EE;</x:String>
+            <x:String x:Key="GlyphInterval">&#xE916;</x:String>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -11,37 +11,68 @@
     mc:Ignorable="d"
     PreviewKeyDown="OnPagePreviewKeyDown">
 
+    <!--
+        Layout: a fixed command/status zone (Row 0, usable while running) over a
+        scrollable settings zone (Row 1). No opaque background is set on any layout
+        panel so the window's Mica material shows through; only SettingsCards form
+        intentional surfaces. Sizes/spacing/glyphs come from the design tokens in
+        App.xaml; colors use Fluent ThemeResource brushes.
+    -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Fixed action header: stays at the top, doesn't scroll, usable while running. -->
+        <!-- Fixed command/status zone: stays at the top, doesn't scroll, usable while running. -->
         <Border
             Grid.Row="0"
-            Padding="24,12"
+            Padding="{StaticResource CommandZonePadding}"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
             <StackPanel
-                MaxWidth="640"
+                MaxWidth="{StaticResource ContentMaxWidth}"
                 HorizontalAlignment="Stretch"
-                Spacing="8">
+                Spacing="{StaticResource SpacingMedium}">
                 <Button
                     AutomationProperties.AutomationId="ToggleButton"
-                    MinHeight="48"
+                    MinHeight="{StaticResource PrimaryButtonMinHeight}"
                     HorizontalAlignment="Stretch"
                     Command="{x:Bind ViewModel.ToggleCommand}"
                     Content="{x:Bind ViewModel.ToggleButtonLabel, Mode=OneWay}"
-                    FontSize="16"
+                    FontSize="{StaticResource PrimaryButtonFontSize}"
                     Style="{StaticResource AccentButtonStyle}" />
+
+                <!-- Status row: a spinning ProgressRing + success dot signal "running" alongside the status text. -->
+                <StackPanel
+                    HorizontalAlignment="Center"
+                    Orientation="Horizontal"
+                    Spacing="{StaticResource SpacingSmall}">
+                    <ProgressRing
+                        Width="{StaticResource StatusIndicatorSize}"
+                        Height="{StaticResource StatusIndicatorSize}"
+                        VerticalAlignment="Center"
+                        IsActive="{x:Bind ViewModel.IsRunning, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.IsRunning, Mode=OneWay}" />
+                    <InfoBadge
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SuccessDotInfoBadgeStyle}"
+                        Visibility="{x:Bind ViewModel.IsRunning, Mode=OneWay}" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="StatusText"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                </StackPanel>
 
                 <!-- Start/stop hotkey: tied to the button, so always shown in the header (greyed out while running). -->
                 <StackPanel
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Orientation="Horizontal"
-                    Spacing="8">
+                    Spacing="{StaticResource SpacingSmall}">
                     <TextBlock
                         x:Uid="HotkeyLabel"
                         VerticalAlignment="Center"
@@ -49,20 +80,13 @@
                     <ComboBox
                         x:Uid="HotkeySelector"
                         AutomationProperties.AutomationId="HotkeySelector"
-                        MinWidth="90"
+                        MinWidth="{StaticResource HotkeyComboBoxMinWidth}"
                         DisplayMemberPath="DisplayKey"
                         IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
                         ItemsSource="{x:Bind ViewModel.HotkeyChoices}"
                         SelectedItem="{x:Bind ViewModel.SelectedHotkey, Mode=TwoWay}" />
                 </StackPanel>
 
-                <TextBlock
-                    AutomationProperties.AutomationId="StatusText"
-                    HorizontalAlignment="Center"
-                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                    Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                    TextAlignment="Center"
-                    TextWrapping="Wrap" />
                 <InfoBar
                     AutomationProperties.AutomationId="ErrorBar"
                     CloseButtonClick="OnErrorBarCloseClicked"
@@ -74,18 +98,18 @@
         </Border>
 
         <!-- Scrollable settings -->
-        <ScrollViewer Grid.Row="1" Padding="24,16,24,24" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" Padding="{StaticResource SettingsZonePadding}" VerticalScrollBarVisibility="Auto">
             <StackPanel
-                MaxWidth="640"
+                MaxWidth="{StaticResource ContentMaxWidth}"
                 HorizontalAlignment="Stretch"
-                Spacing="16">
+                Spacing="{StaticResource SpacingLarge}">
 
                 <!-- Settings block, disabled as a whole while running. Wrapped in a ContentControl since StackPanel isn't a Control. -->
                 <ContentControl
                     HorizontalContentAlignment="Stretch"
                     IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
                     IsTabStop="False">
-                    <StackPanel Spacing="12">
+                    <StackPanel Spacing="{StaticResource SpacingLarge}">
 
                         <!-- Target tabs (mouse / keyboard) -->
                         <SelectorBar
@@ -96,69 +120,65 @@
                             SelectionChanged="OnTargetSelectionChanged">
                             <SelectorBarItem x:Uid="TargetMouse" Tag="{x:Bind vm:TargetKind.Mouse}">
                                 <SelectorBarItem.Icon>
-                                    <FontIcon Glyph="&#xE962;" />
+                                    <FontIcon Glyph="{StaticResource GlyphMouse}" />
                                 </SelectorBarItem.Icon>
                             </SelectorBarItem>
                             <SelectorBarItem x:Uid="TargetKeyboard" Tag="{x:Bind vm:TargetKind.Keyboard}">
                                 <SelectorBarItem.Icon>
-                                    <FontIcon Glyph="&#xE765;" />
+                                    <FontIcon Glyph="{StaticResource GlyphKeyboard}" />
                                 </SelectorBarItem.Icon>
                             </SelectorBarItem>
                         </SelectorBar>
 
-                        <!-- Mouse settings -->
-                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsMouseTarget, Mode=OneWay}">
-                            <controls:SettingsExpander
-                                x:Uid="MouseSettings"
-                                IsExpanded="True">
-                                <controls:SettingsExpander.HeaderIcon>
-                                    <FontIcon Glyph="&#xE962;" />
-                                </controls:SettingsExpander.HeaderIcon>
-                                <controls:SettingsExpander.Items>
-                                    <controls:SettingsCard x:Uid="MouseButtonCard">
-                                        <ComboBox
-                                            x:Uid="MouseButtonSelector"
-                                            AutomationProperties.AutomationId="MouseButtonSelector"
-                                            MinWidth="160"
-                                            DisplayMemberPath="DisplayName"
-                                            ItemsSource="{x:Bind ViewModel.MouseButtons}"
-                                            SelectedItem="{x:Bind ViewModel.SelectedMouseButton, Mode=TwoWay}" />
-                                    </controls:SettingsCard>
+                        <!-- Mouse settings group -->
+                        <StackPanel Spacing="{StaticResource SpacingXSmall}" Visibility="{x:Bind ViewModel.IsMouseTarget, Mode=OneWay}">
+                            <TextBlock x:Uid="MouseGroupHeader" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
-                                    <controls:SettingsCard x:Uid="ClickPositionCard">
-                                        <ToggleSwitch
-                                            x:Uid="UseFixedPosition"
-                                            AutomationProperties.AutomationId="UseFixedPosition"
-                                            IsOn="{x:Bind ViewModel.UseFixedPosition, Mode=TwoWay}" />
-                                    </controls:SettingsCard>
+                            <controls:SettingsCard x:Uid="MouseButtonCard">
+                                <controls:SettingsCard.HeaderIcon>
+                                    <FontIcon Glyph="{StaticResource GlyphMouse}" />
+                                </controls:SettingsCard.HeaderIcon>
+                                <ComboBox
+                                    x:Uid="MouseButtonSelector"
+                                    AutomationProperties.AutomationId="MouseButtonSelector"
+                                    MinWidth="{StaticResource ComboBoxMinWidth}"
+                                    DisplayMemberPath="DisplayName"
+                                    ItemsSource="{x:Bind ViewModel.MouseButtons}"
+                                    SelectedItem="{x:Bind ViewModel.SelectedMouseButton, Mode=TwoWay}" />
+                            </controls:SettingsCard>
 
-                                    <controls:SettingsCard x:Uid="FixedPositionCard" Visibility="{x:Bind ViewModel.UseFixedPosition, Mode=OneWay}">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <NumberBox
-                                                x:Uid="FixedX"
-                                                AutomationProperties.AutomationId="FixedX"
-                                                Header="X"
-                                                MinWidth="100"
-                                                SmallChange="1"
-                                                SpinButtonPlacementMode="Compact"
-                                                Value="{x:Bind ViewModel.FixedX, Mode=TwoWay}" />
-                                            <NumberBox
-                                                x:Uid="FixedY"
-                                                AutomationProperties.AutomationId="FixedY"
-                                                Header="Y"
-                                                MinWidth="100"
-                                                SmallChange="1"
-                                                SpinButtonPlacementMode="Compact"
-                                                Value="{x:Bind ViewModel.FixedY, Mode=TwoWay}" />
-                                            <Button
-                                                x:Uid="CapturePositionButton"
-                                                AutomationProperties.AutomationId="CapturePosition"
-                                                VerticalAlignment="Bottom"
-                                                Command="{x:Bind ViewModel.CapturePositionCommand}" />
-                                        </StackPanel>
-                                    </controls:SettingsCard>
-                                </controls:SettingsExpander.Items>
-                            </controls:SettingsExpander>
+                            <controls:SettingsCard x:Uid="ClickPositionCard">
+                                <ToggleSwitch
+                                    x:Uid="UseFixedPosition"
+                                    AutomationProperties.AutomationId="UseFixedPosition"
+                                    IsOn="{x:Bind ViewModel.UseFixedPosition, Mode=TwoWay}" />
+                            </controls:SettingsCard>
+
+                            <controls:SettingsCard x:Uid="FixedPositionCard" Visibility="{x:Bind ViewModel.UseFixedPosition, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource SpacingSmall}">
+                                    <NumberBox
+                                        x:Uid="FixedX"
+                                        AutomationProperties.AutomationId="FixedX"
+                                        Header="X"
+                                        MinWidth="{StaticResource CoordinateBoxMinWidth}"
+                                        SmallChange="1"
+                                        SpinButtonPlacementMode="Compact"
+                                        Value="{x:Bind ViewModel.FixedX, Mode=TwoWay}" />
+                                    <NumberBox
+                                        x:Uid="FixedY"
+                                        AutomationProperties.AutomationId="FixedY"
+                                        Header="Y"
+                                        MinWidth="{StaticResource CoordinateBoxMinWidth}"
+                                        SmallChange="1"
+                                        SpinButtonPlacementMode="Compact"
+                                        Value="{x:Bind ViewModel.FixedY, Mode=TwoWay}" />
+                                    <Button
+                                        x:Uid="CapturePositionButton"
+                                        AutomationProperties.AutomationId="CapturePosition"
+                                        VerticalAlignment="Bottom"
+                                        Command="{x:Bind ViewModel.CapturePositionCommand}" />
+                                </StackPanel>
+                            </controls:SettingsCard>
 
                             <InfoBar
                                 x:Uid="CaptureInfo"
@@ -166,7 +186,7 @@
                                 IsClosable="False"
                                 IsOpen="{x:Bind ViewModel.IsCapturingPosition, Mode=OneWay}"
                                 Severity="Informational">
-                                <StackPanel Margin="0,0,0,12" Orientation="Horizontal" Spacing="12">
+                                <StackPanel Margin="{StaticResource CaptureContentMargin}" Orientation="Horizontal" Spacing="{StaticResource SpacingMedium}">
                                     <TextBlock
                                         AutomationProperties.AutomationId="LivePosition"
                                         VerticalAlignment="Center"
@@ -180,16 +200,18 @@
                             </InfoBar>
                         </StackPanel>
 
-                        <!-- Keyboard settings -->
-                        <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.IsKeyboardTarget, Mode=OneWay}">
+                        <!-- Keyboard settings group -->
+                        <StackPanel Spacing="{StaticResource SpacingXSmall}" Visibility="{x:Bind ViewModel.IsKeyboardTarget, Mode=OneWay}">
+                            <TextBlock x:Uid="KeyGroupHeader" Style="{StaticResource BodyStrongTextBlockStyle}" />
+
                             <controls:SettingsCard x:Uid="KeyCard">
                                 <controls:SettingsCard.HeaderIcon>
-                                    <FontIcon Glyph="&#xE765;" />
+                                    <FontIcon Glyph="{StaticResource GlyphKeyboard}" />
                                 </controls:SettingsCard.HeaderIcon>
                                 <StackPanel
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal"
-                                    Spacing="12">
+                                    Spacing="{StaticResource SpacingMedium}">
                                     <TextBlock
                                         AutomationProperties.AutomationId="KeyDisplay"
                                         VerticalAlignment="Center"
@@ -203,50 +225,53 @@
                             </controls:SettingsCard>
                             <TextBlock
                                 x:Uid="KeyCaptureHint"
-                                Margin="4,0,0,0"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Style="{StaticResource CaptionTextBlockStyle}"
                                 Visibility="{x:Bind ViewModel.IsKeyCaptureArmed, Mode=OneWay}" />
                         </StackPanel>
 
-                        <!-- Action -->
-                        <controls:SettingsCard x:Uid="ActionCard">
-                            <controls:SettingsCard.HeaderIcon>
-                                <FontIcon Glyph="&#xE8EE;" />
-                            </controls:SettingsCard.HeaderIcon>
-                            <ComboBox
-                                x:Uid="ModeSelector"
-                                AutomationProperties.AutomationId="ModeSelector"
-                                MinWidth="160"
-                                DisplayMemberPath="DisplayName"
-                                ItemsSource="{x:Bind ViewModel.Modes}"
-                                SelectedItem="{x:Bind ViewModel.SelectedMode, Mode=TwoWay}" />
-                        </controls:SettingsCard>
+                        <!-- Action group -->
+                        <StackPanel Spacing="{StaticResource SpacingXSmall}">
+                            <TextBlock x:Uid="ActionGroupHeader" Style="{StaticResource BodyStrongTextBlockStyle}" />
 
-                        <controls:SettingsCard x:Uid="IntervalCard" Visibility="{x:Bind ViewModel.IsRepeatMode, Mode=OneWay}">
-                            <controls:SettingsCard.HeaderIcon>
-                                <FontIcon Glyph="&#xE916;" />
-                            </controls:SettingsCard.HeaderIcon>
-                            <StackPanel
-                                VerticalAlignment="Center"
-                                Orientation="Horizontal"
-                                Spacing="12">
-                                <NumberBox
-                                    x:Uid="IntervalMs"
-                                    AutomationProperties.AutomationId="IntervalMs"
-                                    Maximum="10000"
-                                    MinWidth="140"
-                                    Minimum="10"
-                                    SmallChange="10"
-                                    SpinButtonPlacementMode="Compact"
-                                    Value="{x:Bind ViewModel.IntervalMs, Mode=TwoWay}" />
-                                <TextBlock
-                                    AutomationProperties.AutomationId="CpsText"
+                            <controls:SettingsCard x:Uid="ActionCard">
+                                <controls:SettingsCard.HeaderIcon>
+                                    <FontIcon Glyph="{StaticResource GlyphAction}" />
+                                </controls:SettingsCard.HeaderIcon>
+                                <ComboBox
+                                    x:Uid="ModeSelector"
+                                    AutomationProperties.AutomationId="ModeSelector"
+                                    MinWidth="{StaticResource ComboBoxMinWidth}"
+                                    DisplayMemberPath="DisplayName"
+                                    ItemsSource="{x:Bind ViewModel.Modes}"
+                                    SelectedItem="{x:Bind ViewModel.SelectedMode, Mode=TwoWay}" />
+                            </controls:SettingsCard>
+
+                            <controls:SettingsCard x:Uid="IntervalCard" Visibility="{x:Bind ViewModel.IsRepeatMode, Mode=OneWay}">
+                                <controls:SettingsCard.HeaderIcon>
+                                    <FontIcon Glyph="{StaticResource GlyphInterval}" />
+                                </controls:SettingsCard.HeaderIcon>
+                                <StackPanel
                                     VerticalAlignment="Center"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="{x:Bind ViewModel.CpsText, Mode=OneWay}" />
-                            </StackPanel>
-                        </controls:SettingsCard>
+                                    Orientation="Horizontal"
+                                    Spacing="{StaticResource SpacingMedium}">
+                                    <NumberBox
+                                        x:Uid="IntervalMs"
+                                        AutomationProperties.AutomationId="IntervalMs"
+                                        Maximum="{x:Bind vm:MainPageViewModel.IntervalMaxMs}"
+                                        MinWidth="{StaticResource NumberBoxMinWidth}"
+                                        Minimum="{x:Bind vm:MainPageViewModel.IntervalMinMs}"
+                                        SmallChange="{x:Bind vm:MainPageViewModel.IntervalStepMs}"
+                                        SpinButtonPlacementMode="Compact"
+                                        Value="{x:Bind ViewModel.IntervalMs, Mode=TwoWay}" />
+                                    <TextBlock
+                                        AutomationProperties.AutomationId="CpsText"
+                                        VerticalAlignment="Center"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Text="{x:Bind ViewModel.CpsText, Mode=OneWay}" />
+                                </StackPanel>
+                            </controls:SettingsCard>
+                        </StackPanel>
                     </StackPanel>
                 </ContentControl>
 
