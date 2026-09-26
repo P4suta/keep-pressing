@@ -16,9 +16,8 @@ subject_capitalized = false
 # disable committed's 50/72 defaults to stay consistent.
 subject_length = 0
 line_length = 0
-# The types the git history and the PR-title gate use. committed's default set
-# omits ci/build/deps/revert, which the repo (and Dependabot's build/ci prefixes)
-# uses.
+# The types the git history and the PR-title gate use.
+# committed's default set omits ci/build/deps/revert, and Renovate uses `build(deps):`.
 allowed_types = [
   "feat",
   "fix",
