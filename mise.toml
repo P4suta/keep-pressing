@@ -5,7 +5,7 @@
 dotnet = "10.0.300"
 # Task runner (justfile). CI (ci.yml / release.yml) builds the distributable via
 # the same `just publish` recipe — no second copy of the bundling logic.
-just = "1.51.0"
+just = "1.58.0"
 # Git-hook manager. `just setup` runs `lefthook install`; pinning it here keeps the
 # hooks reproducible instead of relying on a globally-installed binary. Registered
 # mise short-name → aqua backend.
