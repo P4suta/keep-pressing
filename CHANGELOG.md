@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/P4suta/keep-pressing/compare/v0.1.0...v0.1.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **ci:** refresh resolved NuGet dependency snapshots ([#44](https://github.com/P4suta/keep-pressing/issues/44)) ([ac73d37](https://github.com/P4suta/keep-pressing/commit/ac73d37307b6d69bba5852a938f2be238e75c122))
+* refresh Windows tooling and maintenance checks ([#41](https://github.com/P4suta/keep-pressing/issues/41)) ([5118d31](https://github.com/P4suta/keep-pressing/commit/5118d3168f5e9288787ca683195e22532820b1bf))
+
 ## 0.1.0 (2026-07-01)
 
 
