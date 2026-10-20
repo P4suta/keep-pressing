@@ -69,8 +69,6 @@ jobs:
           fail-on-severity: moderate
           comment-summary-in-pr: on-failure
           show-openssf-scorecard: false
-          retry-on-snapshot-warnings: true
-          retry-on-snapshot-warnings-timeout: 180
 
   pr-title:
     name: pr-title
