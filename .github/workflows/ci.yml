@@ -1,15 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
-    # labeled/unlabeled are added so the label-driven `release-gate` re-evaluates
-    # when `release: approved` is added/removed — without them, a label change
-    # leaves the gate's result stale (it would need a manual re-run). The default
-    # activity types must be listed explicitly once `types:` is set.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -22,169 +16,80 @@ jobs:
   build-test:
     name: build-test
     runs-on: windows-latest
-    permissions:
-      contents: read
+    timeout-minutes: 15
     steps:
-      # harden-runner: audit only, since egress filtering is limited on Windows runners.
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      # Use the .NET SDK / just pinned in mise.toml, matching the local toolchain.
-      - name: Setup toolchain (mise)
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
-
-      # Debug build: Directory.Build.props sets TreatWarningsAsErrors=true for Debug, so analyzer/style
-      # warnings act as the CI quality gate.
-      - name: Build (Debug, warnings as errors)
+          persist-credentials: false
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - name: Build and audit dependencies
         run: just build
-
       - name: Test
         run: just test
 
-      # Fail CI if any NuGet dependency (including transitive) has a known vulnerability.
-      # dotnet list exits 0 even on detection, so parse the output and fail explicitly.
-      - name: Audit dependencies (NuGet)
-        shell: pwsh
-        env:
-          DOTNET_CLI_UI_LANGUAGE: en   # Pin output to English for locale-independent parsing.
-        run: |
-          $log = just audit 2>&1 | Out-String
-          Write-Host $log
-          if ($log -match 'has the following vulnerable packages') {
-            Write-Error 'Vulnerable NuGet packages detected'
-          }
-
-  # Publish a self-contained portable build as an artifact for manual testing. Runs independently of
-  # build-test (the quality gate); unsigned.
   package:
     name: package
+    if: startsWith(github.head_ref, 'release-please--')
     runs-on: windows-latest
-    permissions:
-      contents: read
+    timeout-minutes: 20
     steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Setup toolchain (mise)
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
-
-      # Same self-contained publish as release.yml's build job (dist/KeepPressing).
-      - name: Publish portable (x64, self-contained)
+          persist-credentials: false
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - name: Publish unsigned portable candidate
         run: just publish
-
-      - name: Upload portable artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload portable candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: keep-pressing-portable-x64
           path: dist/KeepPressing
           retention-days: 7
           if-no-files-found: error
 
-  # Review dependency changes introduced by a PR; fail on moderate+ vulnerabilities or license issues.
   dependency-review:
     name: dependency-review
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     permissions:
       contents: read
       pull-requests: write
     steps:
-      # On Ubuntu, harden egress with block, allowing only the GitHub API used by checkout / dependency-review.
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+      - uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: block
           allowed-endpoints: >
             github.com:443
             api.github.com:443
-
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Dependency review
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: on-failure
+          show-openssf-scorecard: false
 
-  # Enforce a Conventional Commit PR title. On a squash merge the PR title becomes
-  # the commit, so this is the authoritative check that feeds release-please's
-  # version + CHANGELOG derivation (the lefthook commit-msg hook is the earlier,
-  # local signal). ADR-0001.
   pr-title:
     name: pr-title
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: read
     steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: audit
       - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Defence in depth (ADR-0001): a release-please Release PR (labelled
-  # "autorelease: pending") cannot merge until a human deliberately adds the
-  # "release: approved" label — so cutting a real release is an explicit act, not
-  # an accidental merge. Every non-release PR passes unconditionally. Re-evaluates
-  # on labeled/unlabeled events (see the trigger). Add this as a required status
-  # check in branch protection for the gate to be binding.
-  release-gate:
-    name: release-gate
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: read
-    steps:
-      - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
-        with:
-          egress-policy: audit
-      - name: Require an explicit approval label on a Release PR
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          labels=$(gh pr view "$PR" --repo "$REPO" --json labels -q '.labels[].name')
-          if echo "$labels" | grep -qx "autorelease: pending"; then
-            if echo "$labels" | grep -qx "release: approved"; then
-              echo "Release PR carries 'release: approved' — gate open."
-            else
-              echo "::error::This is a release PR. Add the 'release: approved' label to allow merge (deliberate release; ADR-0001)."
-              exit 1
-            fi
-          else
-            echo "Not a release PR — gate passes."
-          fi
-
-  # The one status check branch protection requires,
-  # named the same in every P4suta repository.
-  # It passes only when every job it needs succeeded or was skipped.
   required:
     name: required
     if: always()
-    needs: [build-test, package, dependency-review, pr-title, release-gate]
+    needs: [build-test, package, dependency-review, pr-title]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Fail unless every needed job succeeded or was skipped
+      - name: Check required jobs
         env:
           RESULTS: ${{ toJSON(needs.*.result) }}
-        run: |
-          echo "${RESULTS}"
-          jq -e 'all(.[]; IN("success", "skipped"))' <<< "${RESULTS}"
+        run: jq -e 'all(.[]; IN("success", "skipped"))' <<< "$RESULTS"

@@ -12,7 +12,8 @@
 name: release-label-guard
 
 on:
-  pull_request_target:
+  # Metadata-only API calls; no checkout or PR code.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [unlabeled]
 
 permissions:
@@ -35,7 +36,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
       - name: Reinstate release-please's tracking label
