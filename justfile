@@ -20,9 +20,9 @@ build:
 test:
     mise x -- dotnet test {{sln}}
 
-# List known-vulnerable NuGet dependencies (including transitive)
+# Restore and reject vulnerable dependencies or missing audit data
 audit:
-    mise x -- dotnet list {{sln}} package --vulnerable --include-transitive
+    mise x -- dotnet restore {{sln}} --force
 
 # Remove build outputs (bin/obj)
 clean:
@@ -42,24 +42,19 @@ publish arch="x64":
     rm -rf "$dist"
     # 1) Self-contained publish of the app into app/ (TrimPortableDistribution prunes app/).
     mise x -- dotnet publish KeepPressing -c Release -r win-{{arch}} -o "$dist/app"
-    # 2) Place the NativeAOT launcher at the root. If publish fails without MSVC (VS C++ Build Tools), warn
-    #    and skip. NativeAOT's native link finds the VC tools via vswhere, which may not be on PATH under
-    #    mise, so prepend the standard VS Installer path first (no-op if absent). Harmless in CI.
+    # NativeAOT needs MSVC, whose installer tools may be absent from the mise PATH.
     vsinst="/c/Program Files (x86)/Microsoft Visual Studio/Installer"
     if ! command -v vswhere >/dev/null 2>&1 && [ -x "$vsinst/vswhere.exe" ]; then export PATH="$vsinst:$PATH"; fi
     tmp="$(mktemp -d)"
-    if mise x -- dotnet publish KeepPressing.Launcher -c Release -r win-{{arch}} -o "$tmp"; then
-        cp "$tmp/KeepPressing.exe" "$dist/KeepPressing.exe"
-        echo "Placed launcher: $dist/KeepPressing.exe"
-    else
-        echo "::warning:: Launcher (NativeAOT) publish failed. Install VS C++ Build Tools (MSVC) to get the root launch exe. For now, start $dist/app/KeepPressing.exe." >&2
-    fi
-    rm -rf "$tmp"
+    trap 'rm -rf "$tmp"' EXIT
+    mise x -- dotnet publish KeepPressing.Launcher -c Release -r win-{{arch}} -o "$tmp"
+    cp "$tmp/KeepPressing.exe" "$dist/KeepPressing.exe"
     # 3) Generate README.txt at the root from packaging/README.dist.txt as UTF-8 BOM + CRLF
     #    (strip CR then re-add, so the result is independent of the checked-out line endings).
     { printf '\xEF\xBB\xBF'; sed -e 's/\r$//' -e 's/$/\r/' packaging/README.dist.txt; } > "$dist/README.txt"
     # 4) Sanity-check required files.
     test -f "$dist/app/KeepPressing.exe" || { echo "App exe not found: $dist/app/KeepPressing.exe" >&2; exit 1; }
+    test -f "$dist/KeepPressing.exe" || { echo "Launcher not found: $dist/KeepPressing.exe" >&2; exit 1; }
     echo "Published: $dist (root launch exe + README.txt + app/)"
 
 # Regenerate the app icon from assets-src/icon-source.png (requires ImageMagick).

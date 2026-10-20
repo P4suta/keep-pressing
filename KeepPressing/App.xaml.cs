@@ -74,6 +74,8 @@ public partial class App : Application
         e.Handled = true;
         await ((IAsyncDisposable)_serviceProvider).DisposeAsync();
         _shutdownComplete = true;
-        ((Window)sender).Close();
+        // Disposal can finish inline, so close after this event returns.
+        var window = (Window)sender;
+        _ = window.DispatcherQueue.TryEnqueue(window.Close);
     }
 }

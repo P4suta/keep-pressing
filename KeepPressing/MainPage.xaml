@@ -83,7 +83,7 @@
                         MinWidth="{StaticResource HotkeyComboBoxMinWidth}"
                         DisplayMemberPath="DisplayKey"
                         IsEnabled="{x:Bind ViewModel.IsNotRunning, Mode=OneWay}"
-                        ItemsSource="{x:Bind ViewModel.HotkeyChoices}"
+                        ItemsSource="{x:Bind ViewModel.HotkeyChoices, Mode=OneTime}"
                         SelectedItem="{x:Bind ViewModel.SelectedHotkey, Mode=TwoWay}" />
                 </StackPanel>
 
@@ -118,12 +118,12 @@
                             AutomationProperties.AutomationId="TargetKind"
                             HorizontalAlignment="Center"
                             SelectionChanged="OnTargetSelectionChanged">
-                            <SelectorBarItem x:Uid="TargetMouse" Tag="{x:Bind vm:TargetKind.Mouse}">
+                            <SelectorBarItem x:Uid="TargetMouse" Tag="{x:Bind vm:TargetKind.Mouse, Mode=OneTime}">
                                 <SelectorBarItem.Icon>
                                     <FontIcon Glyph="{StaticResource GlyphMouse}" />
                                 </SelectorBarItem.Icon>
                             </SelectorBarItem>
-                            <SelectorBarItem x:Uid="TargetKeyboard" Tag="{x:Bind vm:TargetKind.Keyboard}">
+                            <SelectorBarItem x:Uid="TargetKeyboard" Tag="{x:Bind vm:TargetKind.Keyboard, Mode=OneTime}">
                                 <SelectorBarItem.Icon>
                                     <FontIcon Glyph="{StaticResource GlyphKeyboard}" />
                                 </SelectorBarItem.Icon>
@@ -143,7 +143,7 @@
                                     AutomationProperties.AutomationId="MouseButtonSelector"
                                     MinWidth="{StaticResource ComboBoxMinWidth}"
                                     DisplayMemberPath="DisplayName"
-                                    ItemsSource="{x:Bind ViewModel.MouseButtons}"
+                                    ItemsSource="{x:Bind ViewModel.MouseButtons, Mode=OneTime}"
                                     SelectedItem="{x:Bind ViewModel.SelectedMouseButton, Mode=TwoWay}" />
                             </controls:SettingsCard>
 
@@ -243,7 +243,7 @@
                                     AutomationProperties.AutomationId="ModeSelector"
                                     MinWidth="{StaticResource ComboBoxMinWidth}"
                                     DisplayMemberPath="DisplayName"
-                                    ItemsSource="{x:Bind ViewModel.Modes}"
+                                    ItemsSource="{x:Bind ViewModel.Modes, Mode=OneTime}"
                                     SelectedItem="{x:Bind ViewModel.SelectedMode, Mode=TwoWay}" />
                             </controls:SettingsCard>
 
@@ -258,10 +258,10 @@
                                     <NumberBox
                                         x:Uid="IntervalMs"
                                         AutomationProperties.AutomationId="IntervalMs"
-                                        Maximum="{x:Bind vm:MainPageViewModel.IntervalMaxMs}"
+                                        Maximum="{x:Bind vm:MainPageViewModel.IntervalMaxMs, Mode=OneTime}"
                                         MinWidth="{StaticResource NumberBoxMinWidth}"
-                                        Minimum="{x:Bind vm:MainPageViewModel.IntervalMinMs}"
-                                        SmallChange="{x:Bind vm:MainPageViewModel.IntervalStepMs}"
+                                        Minimum="{x:Bind vm:MainPageViewModel.IntervalMinMs, Mode=OneTime}"
+                                        SmallChange="{x:Bind vm:MainPageViewModel.IntervalStepMs, Mode=OneTime}"
                                         SpinButtonPlacementMode="Compact"
                                         Value="{x:Bind ViewModel.IntervalMs, Mode=TwoWay}" />
                                     <TextBlock
