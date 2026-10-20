@@ -30,7 +30,8 @@ Stop the app before deleting its extracted folder to uninstall it.
 
 Install [Git for Windows](https://git-scm.com/download/win), [mise](https://mise.jdx.dev/), and Visual Studio C++ Build Tools with the Windows SDK.
 Use Git Bash for the recipes, including the NativeAOT launcher build.
-`mise.toml` pins the tools, and `global.json` makes the shared .NET installation select the exact SDK.
+`mise.toml` pins the other tools and enables reading the .NET version from `global.json`.
+Both mise and the shared .NET installation use that exact SDK version.
 
 ```sh
 mise install
