@@ -64,7 +64,110 @@ jobs:
         if: matrix.build-mode == 'manual'
         run: just build
 
+      - name: Generate resolved NuGet metadata
+        if: matrix.language == 'csharp'
+        shell: pwsh
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tool = Join-Path $env:RUNNER_TEMP 'sbom-tool.exe'
+          Invoke-WebRequest 'https://github.com/microsoft/sbom-tool/releases/download/v4.1.5/sbom-tool-win-x64.exe' -OutFile $tool
+          $expected = '625767b371b7fdd58f40f618b8a86da0247a33c89e419039c86b4edba1dad4b5'
+          if ((Get-FileHash $tool -Algorithm SHA256).Hash -ne $expected) {
+            throw 'SBOM tool checksum mismatch'
+          }
+          $projects = @('KeepPressing', 'KeepPressing.Launcher', 'KeepPressing.Core.Tests', 'KeepPressing.App.Tests')
+          foreach ($project in $projects) {
+            $output = Join-Path $env:RUNNER_TEMP "nuget-snapshots/$project"
+            New-Item -ItemType Directory -Path $output | Out-Null
+            & $tool generate -b "$project/bin" -bc $project -pn $project -pv $env:SOURCE_SHA -ps P4suta -nsb $env:REPOSITORY_URL -m $output -mi SPDX:2.2 -P 2 -V Warning -cd '--DetectorCategories NuGet'
+            if ($LASTEXITCODE -ne 0) { throw "NuGet metadata generation failed for $project" }
+          }
+
+      - name: Upload NuGet metadata
+        if: matrix.language == 'csharp'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nuget-snapshots
+          path: ${{ runner.temp }}/nuget-snapshots/*/_manifest/spdx_2.2/manifest.spdx.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           category: "/language:${{ matrix.language }}"
+
+  submit-dependencies:
+    name: Submit NuGet dependencies
+    needs: analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - name: Download NuGet metadata
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: nuget-snapshots
+          path: nuget-snapshots
+
+      - name: Require complete metadata before submission
+        shell: pwsh
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $projects = @('KeepPressing', 'KeepPressing.Launcher', 'KeepPressing.Core.Tests', 'KeepPressing.App.Tests')
+          foreach ($project in $projects) {
+            $path = "nuget-snapshots/$project/_manifest/spdx_2.2/manifest.spdx.json"
+            $document = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $packages = @($document.packages | Where-Object {
+              @($_.externalRefs | Where-Object {
+                $_.referenceType -eq 'purl' -and $_.referenceLocator -like 'pkg:nuget/*'
+              }).Count -gt 0
+            })
+            if ($document.spdxVersion -ne 'SPDX-2.2' -or $document.name -ne "$project $env:SOURCE_SHA" -or $packages.Count -eq 0) {
+              throw "Missing resolved NuGet packages for $project"
+            }
+          }
+
+      - name: Submit app dependencies
+        uses: advanced-security/spdx-dependency-submission-action@b009efcf8b9d562a4569d2028c276522232e631f # v0.4.0
+        with:
+          filePath: nuget-snapshots/KeepPressing/_manifest/spdx_2.2
+          filePattern: manifest.spdx.json
+          manifestPath: KeepPressing/KeepPressing.csproj
+          correlator: nuget-keep-pressing
+
+      - name: Submit launcher dependencies
+        uses: advanced-security/spdx-dependency-submission-action@b009efcf8b9d562a4569d2028c276522232e631f # v0.4.0
+        with:
+          filePath: nuget-snapshots/KeepPressing.Launcher/_manifest/spdx_2.2
+          filePattern: manifest.spdx.json
+          manifestPath: KeepPressing.Launcher/KeepPressing.Launcher.csproj
+          correlator: nuget-launcher
+
+      - name: Submit core test dependencies
+        uses: advanced-security/spdx-dependency-submission-action@b009efcf8b9d562a4569d2028c276522232e631f # v0.4.0
+        with:
+          filePath: nuget-snapshots/KeepPressing.Core.Tests/_manifest/spdx_2.2
+          filePattern: manifest.spdx.json
+          manifestPath: KeepPressing.Core.Tests/KeepPressing.Core.Tests.csproj
+          correlator: nuget-core-tests
+
+      - name: Submit app test dependencies
+        uses: advanced-security/spdx-dependency-submission-action@b009efcf8b9d562a4569d2028c276522232e631f # v0.4.0
+        with:
+          filePath: nuget-snapshots/KeepPressing.App.Tests/_manifest/spdx_2.2
+          filePattern: manifest.spdx.json
+          manifestPath: KeepPressing.App.Tests/KeepPressing.App.Tests.csproj
+          correlator: nuget-app-tests
