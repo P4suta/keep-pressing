@@ -1,0 +1,13 @@
+workplace = "8f95af89faf8535b63a6"
+repository = "P4suta/keep-pressing"
+repository_id = 1268843734
+owner_id = 42543015
+environment = "release-please"
+branches = ["main"]
+project = "keep-pressing"
+source_config = "automation"
+config = "github_automation"
+
+[fields]
+RELEASE_PLEASE_CLIENT_ID = "GITHUB_APP_CLIENT_ID"
+RELEASE_PLEASE_PRIVATE_KEY = "GITHUB_APP_PRIVATE_KEY"
