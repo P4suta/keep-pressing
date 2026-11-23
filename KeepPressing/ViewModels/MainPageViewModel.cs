@@ -43,17 +43,17 @@ public sealed partial class MainPageViewModel : ObservableObject
 
         // Choice display names are language-dependent, so build them from loc in the ctor rather than an
         // initializer (HotkeyChoices stays an initializer — "F5" etc. are language-independent symbols).
-        MouseButtons =
+        MouseButtons = Array.AsReadOnly<Choice<MouseButton>>(
         [
             new(MouseButton.Left, loc.GetString("Mouse_Left")),
             new(MouseButton.Right, loc.GetString("Mouse_Right")),
             new(MouseButton.Middle, loc.GetString("Mouse_Middle")),
-        ];
-        Modes =
+        ]);
+        Modes = Array.AsReadOnly<Choice<PressModeKind>>(
         [
             new(PressModeKind.Repeat, loc.GetString("Mode_Repeat")),
             new(PressModeKind.Hold, loc.GetString("Mode_Hold")),
-        ];
+        ]);
 
         SelectedMouseButton = MouseButtons[0];
         SelectedMode = Modes[0];
@@ -83,14 +83,14 @@ public sealed partial class MainPageViewModel : ObservableObject
 
     public IReadOnlyList<Choice<PressModeKind>> Modes { get; }
 
-    public IReadOnlyList<HotkeyChoice> HotkeyChoices { get; } =
+    public IReadOnlyList<HotkeyChoice> HotkeyChoices { get; } = Array.AsReadOnly<HotkeyChoice>(
     [
         new(VirtualKey.F5, "F5"),
         new(VirtualKey.F6, "F6"),
         new(VirtualKey.F7, "F7"),
         new(VirtualKey.F9, "F9"),
         new(VirtualKey.F10, "F10"),
-    ];
+    ]);
 
     // ---- Configuration state --------------------------------------------
 
